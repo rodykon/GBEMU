@@ -1,3 +1,6 @@
+#ifndef BUS__
+#define BUS__
+
 #include <inttypes.h>
 
 typedef int(*bus_read_t)(void*,uint16_t,uint16_t);
@@ -17,4 +20,6 @@ int remove_bus_connection(uint16_t start_address);
 
 int bus_read(void *buf, uint16_t src, uint16_t size);
 int bus_write(void *buf, uint16_t dst, uint16_t size);
+
+#endif
 
