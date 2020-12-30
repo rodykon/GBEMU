@@ -105,25 +105,25 @@ int remove_bus_connection(uint16_t start_address)
 	return -1;
 }
 
-int bus_read(void *buf, uint16_t src, uint16_t size)
+int bus_read(uint8_t *result, uint16_t src)
 {
 	struct bus_connection *connection = find_connection(src);
-	if (connection == NULL || src + size >= connection->start_address + connection->size)
+	if (connection == NULL)
 	{
 		return -1;
 	}
 
-	return connection->read_func(buf, src - connection->start_address, size);
+	return connection->read_func(result, src - connection->start_address);
 }
 
-int bus_write(void *buf, uint16_t dst, uint16_t size)
+int bus_write(void *result, uint16_t dst)
 {
 	struct bus_connection *connection = find_connection(dst);
-	if (connection == NULL || dst + size >= connection->start_address + connection->size)
+	if (connection == NULL)
 	{
 		return -1;
 	}
 
-	return connection->write_func(buf, dst - connection->start_address, size);
+	return connection->write_func(result, dst - connection->start_address);
 }
 
