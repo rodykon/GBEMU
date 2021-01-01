@@ -90,6 +90,7 @@ int remove_bus_connection(uint16_t start_address)
 	{
 		bus_list = current->next;
 		free(current);
+        return 0;
 	}
 
 	for (; current->next != NULL; current = current->next)
@@ -116,7 +117,7 @@ int bus_read(uint8_t *result, uint16_t src)
 	return connection->read_func(result, src - connection->start_address);
 }
 
-int bus_write(void *result, uint16_t dst)
+int bus_write(uint8_t src, uint16_t dst)
 {
 	struct bus_connection *connection = find_connection(dst);
 	if (connection == NULL)
@@ -124,6 +125,6 @@ int bus_write(void *result, uint16_t dst)
 		return -1;
 	}
 
-	return connection->write_func(result, dst - connection->start_address);
+	return connection->write_func(src, dst - connection->start_address);
 }
 

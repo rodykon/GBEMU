@@ -6,35 +6,41 @@
 char mem[256];
 
 
-int read(void *buf, uint16_t src, uint16_t size)
+int read(uint8_t *result, uint16_t src)
 {
 	printf("Read from %d\n", src);
-	memcpy(buf, &mem[src], size);
+	*result = mem[src];
 	return 0;
 }
 
-int write(void *buf, uint16_t dst, uint16_t size)
+int write(uint8_t value, uint16_t addr)
 {
-	printf("Write to %d\n", dst);
-	memcpy(&mem[dst], buf, size);
+	printf("Write to %d\n", addr);
+	mem[addr] = value;
 	return 0;
 }
 
 int main(int argc, const char *argv[])
 {
 	memset(mem, 'a', 256);
-	char buf[256];
+	uint8_t result;
 
 	printf("add_bus_connection returned: %d\n", add_bus_connection(100, 256, read, write));
-	printf("bus_read from address %d returned result %d\n", 1, bus_read(buf, 1, 4));
-	printf("bus_read from address %d returned result %d\n", 500, bus_read(buf, 500, 4));
-	printf("bus_read from address %d returned result %d\n", 355, bus_read(buf, 355, 4));
-	printf("bus_read from address %d returned result %d\n", 300, bus_read(buf, 300, 4));
+	printf("bus_read from address %d returned result %d\n", 1, bus_read(&result, 1));
+	printf("bus_read from address %d returned result %d\n", 500, bus_read(&result, 500));
+	printf("bus_read from address %d returned result %d\n", 355, bus_read(&result, 355));
+	printf("bus_read from address %d returned result %d\n", 356, bus_read(&result, 356));
+	printf("bus_read from address %d returned result %d\n", 300, bus_read(&result, 300));
 
 	
-	printf("bus_write to address %d returned result %d\n", 1, bus_write(buf, 1, 4));
-	printf("bus_write to address %d returned result %d\n", 500, bus_write(buf, 500, 4));
-	printf("bus_write to address %d returned result %d\n", 355, bus_write(buf, 355, 4));
-	printf("bus_write to address %d returned result %d\n", 300, bus_write(buf, 300, 4));
+	printf("bus_write to address %d returned result %d\n", 1, bus_write('b', 1));
+	printf("bus_write to address %d returned result %d\n", 500, bus_write('b', 500));
+	printf("bus_write to address %d returned result %d\n", 355, bus_write('b', 355));
+	printf("bus_write to address %d returned result %d\n", 356, bus_write('b', 356));
+	printf("bus_write to address %d returned result %d\n", 300, bus_write('b', 300));
+    printf("mem: %256s\n", mem);
+
+	printf("remove_bus_connection returned: %d\n", remove_bus_connection(100));
+
 }
 
