@@ -1,5 +1,6 @@
 #include "bus.h"
 #include <stdlib.h>
+#include "log.h"
 
 static struct bus_connection *bus_list = NULL;
 
@@ -77,6 +78,7 @@ int add_bus_connection(uint16_t start_address, uint16_t size, bus_read_t read_fu
 	}
 
 error:
+    log("Failed to add bus_connection %04x", start_address);
 	free(new_connection);
 	return -1;	
 }
@@ -103,28 +105,29 @@ int remove_bus_connection(uint16_t start_address)
 			return 0;
 		}
 	}
+    log("ERROR: Failed to remove bus connection %04x", start_address);
 	return -1;
 }
 
 int bus_read(uint8_t *result, uint16_t src)
 {
 	struct bus_connection *connection = find_connection(src);
-	if (connection == NULL)
+	if (connection == NULL || connection->read_func(result, src - connection->start_address))
 	{
-		return -1;
+		log("ERROR: Could not read from bus address %04x", src);
+        return -1;
 	}
-
-	return connection->read_func(result, src - connection->start_address);
+    return 0;
 }
 
 int bus_write(uint8_t src, uint16_t dst)
 {
 	struct bus_connection *connection = find_connection(dst);
-	if (connection == NULL)
+	if (connection == NULL || connection->write_func(src, dst - connection->start_address))
 	{
+        log("ERROR: Could not write to bus address %04x", dst);
 		return -1;
 	}
-
-	return connection->write_func(src, dst - connection->start_address);
+    return 0;
 }
 

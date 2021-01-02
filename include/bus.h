@@ -4,7 +4,7 @@
 #include <inttypes.h>
 
 typedef int(*bus_read_t)(uint8_t*,uint16_t);
-typedef int(*bus_write_t)(uint8_t*,uint16_t);
+typedef int(*bus_write_t)(uint8_t,uint16_t);
 
 struct bus_connection {
 	struct bus_connection *next;
