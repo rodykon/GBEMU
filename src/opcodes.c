@@ -1,9 +1,11 @@
 #include "cpu/opcodes.h"
 #include "bus.h"
+#include "log.h"
 
 
 OPCODE(NOP)
 {
+    log("DEBUG: NOP");
     return 0;
 }
 
@@ -25,11 +27,14 @@ OPCODE(LD1)
     }
 
     SET_MSB(regs->bc, arg);
+
+    log("DEBUG: LD BC, 0x%x", regs->bc);
     return 0;
 }
 
 OPCODE(LD2)
 {
+    log("DEBUG: LD (BC), A");
     return bus_write(GET_MSB(regs->af), regs->bc);
 }
 

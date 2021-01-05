@@ -21,10 +21,10 @@ struct registers {
 	uint16_t pc;
 };
 
-#define GET_MSB(reg) (uint8_t)(reg >> 4)
+#define GET_MSB(reg) (uint8_t)(reg >> 8)
 #define GET_LSB(reg) (uint8_t)(reg & 0xff)
-#define SET_MSB(reg, val) reg = reg ^ 0xff00 + val
-#define SET_LSB(reg, val) reg = reg ^ 0x00ff + val << 4
+#define SET_MSB(reg, val) reg = (reg & 0x00ff) + (val << 8)
+#define SET_LSB(reg, val) reg = (reg & 0xff00) + val
 
 static inline void init_registers(struct registers *regs)
 {

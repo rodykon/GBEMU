@@ -5,6 +5,12 @@
 #include "log.h"
 
 
+static inline void log_registers(struct registers *regs)
+{
+    log("DEBUG: AF=%04x, BC=%04x, DE=%04x, HL=%04x, SP=%04x, PC=%04x",
+        regs->af, regs->bc, regs->de, regs->hl, regs->sp, regs->pc);
+}
+
 void cpu_loop()
 {
     struct registers regs;
@@ -27,7 +33,7 @@ void cpu_loop()
             opcode = &opcodes[current_opcode];
 
             // Call opcode handler
-            log("INFO: Executing handler for opcode %02x", current_opcode);
+            log_registers(&regs);
             if (opcode->func(&regs))
             {
                 log("ERROR: Opcode handler failed!");
