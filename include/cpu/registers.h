@@ -3,6 +3,9 @@
 
 #include <inttypes.h>
 
+#define __REG(n1, n2) \
+    union { struct { uint8_t n2 : 8; uint8_t n1 : 8; }; uint16_t n1 ## n2; };
+
 struct flag_reg {
 	uint8_t nu : 4; // Not used
 	uint8_t c : 1;  // Carry Flag
@@ -12,11 +15,18 @@ struct flag_reg {
 };
 
 struct registers {
-	struct flag_reg fl;
-	uint16_t af;
-	uint16_t bc;
-	uint16_t de;
-	uint16_t hl;
+    union
+    {
+        struct
+        {
+            struct flag_reg f;
+            uint8_t a;
+        };
+        uint16_t af;
+    };
+    __REG(b, c);
+    __REG(d, e);
+    __REG(h, l);
 	uint16_t sp;
 	uint16_t pc;
 };
@@ -28,11 +38,11 @@ struct registers {
 
 static inline void init_registers(struct registers *regs)
 {
-    regs->fl.nu = 0;
-    regs->fl.c = 0;
-    regs->fl.h = 0;
-    regs->fl.n = 0;
-    regs->fl.z = 0;
+    regs->f.nu = 0;
+    regs->f.c = 0;
+    regs->f.h = 0;
+    regs->f.n = 0;
+    regs->f.z = 0;
     regs->af = 0x01B0;
     regs->bc = 0x0013;
     regs->de = 0x00D8;

@@ -2,6 +2,7 @@
 #include <string.h>
 #include "bus.h"
 #include "cpu/cpu.h"
+#include "cpu/registers.h"
 
 char mem[256];
 
@@ -35,4 +36,3 @@ int main(int argc, const char *argv[])
 
     remove_bus_connection(0x0100);
 }
-
