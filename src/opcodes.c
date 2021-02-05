@@ -40,8 +40,11 @@ static int write_word(uint16_t value, uint16_t address)
 }
 
 #define ZERO(a, b) ((a) + (b) == 0) ? 1 : 0
+#define SUB_ZERO(a, b) ((a) - (b) == 0) ? 1 : 0
 #define CARRY(a, b) ((a) + (b) < (a)) ? 1 : 0
-#define HALF_CARRY(a, b) ((((a) & 0xF) + ((a) & 0xF)) & 0x10) ? 1 : 0
+#define SUB_CARRY(a, b) ((b) > (a)) ? 1 : 0
+#define HALF_CARRY(a, b) ((((a) & 0xF) + ((b) & 0xF)) & 0x10) ? 1 : 0
+#define SUB_HALF_CARRY(a, b) (((a) & 0xF) < ((b) & 0xF)) ? 1 : 0
 
 static void inc_byte(uint8_t *val, struct registers *regs)
 {
@@ -56,8 +59,8 @@ static void dec_byte(uint8_t *val, struct registers *regs)
 {
     *val--;
 
-    regs->f.z = ZERO(*val, (uint8_t)-1);
-    regs->f.h = HALF_CARRY(*val, (uint8_t)-1);
+    regs->f.z = SUB_ZERO(*val, 1);
+    regs->f.h = SUB_HALF_CARRY(*val, 1);
     regs->f.n = 1;
 }
 
@@ -1400,6 +1403,1100 @@ OPCODE(ADC_A_n)
     return 0;
 }
 
+// SUB A, reg8
+
+OPCODE(SUB_A_A)
+{
+    regs->f.z = SUB_ZERO(regs->a, regs->a);
+    regs->f.n = 1;
+    regs->f.h = SUB_HALF_CARRY(regs->a, regs->a);
+    regs->f.c = SUB_CARRY(regs->a, regs->a);
+
+    regs->a -= regs->a;
+    log("DEBUG: SUB A, A");
+    return 0;
+}
+
+OPCODE(SUB_A_B)
+{
+    regs->f.z = SUB_ZERO(regs->a, regs->b);
+    regs->f.n = 1;
+    regs->f.h = SUB_HALF_CARRY(regs->a, regs->b);
+    regs->f.c = SUB_CARRY(regs->a, regs->b);
+
+    regs->a -= regs->b;
+    log("DEBUG: SUB A, B");
+    return 0;
+}
+
+OPCODE(SUB_A_C)
+{
+    regs->f.z = SUB_ZERO(regs->a, regs->c);
+    regs->f.n = 1;
+    regs->f.h = SUB_HALF_CARRY(regs->a, regs->c);
+    regs->f.c = SUB_CARRY(regs->a, regs->c);
+
+    regs->a -= regs->c;
+    log("DEBUG: SUB A, C");
+    return 0;
+}
+
+OPCODE(SUB_A_D)
+{
+    regs->f.z = SUB_ZERO(regs->a, regs->d);
+    regs->f.n = 1;
+    regs->f.h = SUB_HALF_CARRY(regs->a, regs->d);
+    regs->f.c = SUB_CARRY(regs->a, regs->d);
+
+    regs->a -= regs->d;
+    log("DEBUG: SUB A, D");
+    return 0;
+}
+
+OPCODE(SUB_A_E)
+{
+    regs->f.z = SUB_ZERO(regs->a, regs->e);
+    regs->f.n = 1;
+    regs->f.h = SUB_HALF_CARRY(regs->a, regs->e);
+    regs->f.c = SUB_CARRY(regs->a, regs->e);
+
+    regs->a -= regs->e;
+    log("DEBUG: SUB A, E");
+    return 0;
+}
+
+OPCODE(SUB_A_H)
+{
+    regs->f.z = SUB_ZERO(regs->a, regs->h);
+    regs->f.n = 1;
+    regs->f.h = SUB_HALF_CARRY(regs->a, regs->h);
+    regs->f.c = SUB_CARRY(regs->a, regs->h);
+
+    regs->a -= regs->h;
+    log("DEBUG: SUB A, H");
+    return 0;
+}
+
+OPCODE(SUB_A_L)
+{
+    regs->f.z = SUB_ZERO(regs->a, regs->l);
+    regs->f.n = 1;
+    regs->f.h = SUB_HALF_CARRY(regs->a, regs->l);
+    regs->f.c = SUB_CARRY(regs->a, regs->l);
+
+    regs->a -= regs->l;
+    log("DEBUG: SUB A, L");
+    return 0;
+}
+
+// SUB A, (HL)
+
+OPCODE(SUB_A_HL)
+{
+    uint8_t val;
+
+    if (bus_read(&val, regs->hl))
+    {
+        return -1;
+    }
+
+    regs->f.z = SUB_ZERO(regs->a, val);
+    regs->f.n = 1;
+    regs->f.h = SUB_HALF_CARRY(regs->a, val);
+    regs->f.c = SUB_CARRY(regs->a, val);
+
+    regs->a -= val;
+    log("DEBUG: SUB A, (HL)");
+    return 0;
+}
+
+// SUB A, imm8
+
+OPCODE(SUB_A_n)
+{
+    uint8_t imm8;
+
+    if (bus_read(&imm8, regs->pc + 1))
+    {
+        return -1;
+    }
+
+    regs->f.z = SUB_ZERO(regs->a, imm8);
+    regs->f.n = 1;
+    regs->f.h = SUB_HALF_CARRY(regs->a, imm8);
+    regs->f.c = SUB_CARRY(regs->a, imm8);
+
+    regs->a -= imm8;
+    log("DEBUG: SUB A, 0x%02x", imm8);
+    return 0;
+}
+
+// SBC A, reg8
+
+OPCODE(SBC_A_A)
+{
+    regs->f.z = SUB_ZERO(regs->a, regs->a + regs->f.c);
+    regs->f.n = 1;
+    regs->f.h = SUB_HALF_CARRY(regs->a, regs->a + regs->f.c);
+    regs->f.c = SUB_CARRY(regs->a, regs->a + regs->f.c);
+
+    regs->a -= regs->a + regs->f.c;
+    log("DEBUG: SBC A, A");
+    return 0;
+}
+
+OPCODE(SBC_A_B)
+{
+    regs->f.z = SUB_ZERO(regs->a, regs->b + regs->f.c);
+    regs->f.n = 1;
+    regs->f.h = SUB_HALF_CARRY(regs->a, regs->b + regs->f.c);
+    regs->f.c = SUB_CARRY(regs->a, regs->b + regs->f.c);
+
+    regs->a -= regs->b + regs->f.c;
+    log("DEBUG: SBC A, B");
+    return 0;
+}
+
+OPCODE(SBC_A_C)
+{
+    regs->f.z = SUB_ZERO(regs->a, regs->c + regs->f.c);
+    regs->f.n = 1;
+    regs->f.h = SUB_HALF_CARRY(regs->a, regs->c + regs->f.c);
+    regs->f.c = SUB_CARRY(regs->a, regs->c + regs->f.c);
+
+    regs->a -= regs->c + regs->f.c;
+    log("DEBUG: SBC A, C");
+    return 0;
+}
+
+OPCODE(SBC_A_D)
+{
+    regs->f.z = SUB_ZERO(regs->a, regs->d + regs->f.c);
+    regs->f.n = 1;
+    regs->f.h = SUB_HALF_CARRY(regs->a, regs->d + regs->f.c);
+    regs->f.c = SUB_CARRY(regs->a, regs->d + regs->f.c);
+
+    regs->a -= regs->d + regs->f.c;
+    log("DEBUG: SBC A, D");
+    return 0;
+}
+
+OPCODE(SBC_A_E)
+{
+    regs->f.z = SUB_ZERO(regs->a, regs->e + regs->f.c);
+    regs->f.n = 1;
+    regs->f.h = SUB_HALF_CARRY(regs->a, regs->e + regs->f.c);
+    regs->f.c = SUB_CARRY(regs->a, regs->e + regs->f.c);
+
+    regs->a -= regs->e + regs->f.c;
+    log("DEBUG: SBC A, E");
+    return 0;
+}
+
+OPCODE(SBC_A_H)
+{
+    regs->f.z = SUB_ZERO(regs->a, regs->h + regs->f.c);
+    regs->f.n = 1;
+    regs->f.h = SUB_HALF_CARRY(regs->a, regs->h + regs->f.c);
+    regs->f.c = SUB_CARRY(regs->a, regs->h + regs->f.c);
+
+    regs->a -= regs->h + regs->f.c;
+    log("DEBUG: SBC A, H");
+    return 0;
+}
+
+OPCODE(SBC_A_L)
+{
+    regs->f.z = SUB_ZERO(regs->a, regs->l + regs->f.c);
+    regs->f.n = 1;
+    regs->f.h = SUB_HALF_CARRY(regs->a, regs->l + regs->f.c);
+    regs->f.c = SUB_CARRY(regs->a, regs->l + regs->f.c);
+
+    regs->a -= regs->l + regs->f.c;
+    log("DEBUG: SBC A, L");
+    return 0;
+}
+
+// SBC A, (HL)
+
+OPCODE(SBC_A_HL)
+{
+    uint8_t val;
+
+    if (bus_read(&val, regs->hl))
+    {
+        return -1;
+    }
+
+    regs->f.z = SUB_ZERO(regs->a, val + regs->f.c);
+    regs->f.n = 1;
+    regs->f.h = SUB_HALF_CARRY(regs->a, val + regs->f.c);
+    regs->f.c = SUB_CARRY(regs->a, val + regs->f.c);
+
+    regs->a -= val + regs->f.c;
+    log("DEBUG: SBC A, (HL)");
+    return 0;
+}
+
+// SBC A, imm8
+
+OPCODE(SBC_A_n)
+{
+    uint8_t imm8;
+
+    if (bus_read(&imm8, regs->pc + 1))
+    {
+        return -1;
+    }
+
+    regs->f.z = SUB_ZERO(regs->a, imm8 + regs->f.c);
+    regs->f.n = 1;
+    regs->f.h = SUB_HALF_CARRY(regs->a, imm8 + regs->f.c);
+    regs->f.c = SUB_CARRY(regs->a, imm8 + regs->f.c);
+
+    regs->a -= imm8 + regs->f.c;
+    log("DEBUG: SBC A, 0x%02x", imm8);
+    return 0;
+}
+
+// AND A, reg8
+
+OPCODE(AND_A_A)
+{
+    regs->a &= regs->a;
+
+    regs->f.z = regs->a == 0 ? 1 : 0;
+    regs->f.n = 0;
+    regs->f.h = 1;
+    regs->f.c = 0;
+    log("DEBUG: AND A, A");
+    return 0;
+}
+
+OPCODE(AND_A_B)
+{
+    regs->a &= regs->b;
+    
+    regs->f.z = regs->a == 0 ? 1 : 0;
+    regs->f.n = 0;
+    regs->f.h = 1;
+    regs->f.c = 0;
+    log("DEBUG: AND A, B");
+    return 0;
+}
+
+OPCODE(AND_A_C)
+{
+    regs->a &= regs->c;
+    
+    regs->f.z = regs->a == 0 ? 1 : 0;
+    regs->f.n = 0;
+    regs->f.h = 1;
+    regs->f.c = 0;
+    log("DEBUG: AND A, C");
+    return 0;
+}
+
+OPCODE(AND_A_D)
+{
+    regs->a &= regs->d;
+    
+    regs->f.z = regs->a == 0 ? 1 : 0;
+    regs->f.n = 0;
+    regs->f.h = 1;
+    regs->f.c = 0;
+    log("DEBUG: AND A, D");
+    return 0;
+}
+
+OPCODE(AND_A_E)
+{
+    regs->a &= regs->e;
+    
+    regs->f.z = regs->a == 0 ? 1 : 0;
+    regs->f.n = 0;
+    regs->f.h = 1;
+    regs->f.c = 0;
+    log("DEBUG: AND A, E");
+    return 0;
+}
+
+OPCODE(AND_A_H)
+{
+    regs->a &= regs->a;
+    
+    regs->f.z = regs->a == 0 ? 1 : 0;
+    regs->f.n = 0;
+    regs->f.h = 1;
+    regs->f.c = 0;
+    log("DEBUG: AND A, H");
+    return 0;
+}
+
+OPCODE(AND_A_L)
+{
+    regs->a &= regs->l;
+    
+    regs->f.z = regs->a == 0 ? 1 : 0;
+    regs->f.n = 0;
+    regs->f.h = 1;
+    regs->f.c = 0;
+    log("DEBUG: AND A, L");
+    return 0;
+}
+
+// AND A, (HL)
+
+OPCODE(AND_A_HL)
+{
+    uint8_t val;
+
+    if (bus_read(&val, regs->hl))
+    {
+        return -1;
+    }
+
+    regs->a &= val;
+    
+    regs->f.z = regs->a == 0 ? 1 : 0;
+    regs->f.n = 0;
+    regs->f.h = 1;
+    regs->f.c = 0;
+    log("DEBUG: AND A, (HL)");
+    return 0;
+}
+
+// AND A, imm8
+
+OPCODE(AND_A_n)
+{
+    uint8_t imm8;
+
+    if (bus_read(&imm8, regs->pc + 1))
+    {
+        return -1;
+    }
+
+    regs->a &= imm8;
+    
+    regs->f.z = regs->a == 0 ? 1 : 0;
+    regs->f.n = 0;
+    regs->f.h = 1;
+    regs->f.c = 0;
+    log("DEBUG: AND A, 0x%02x", imm8);
+    return 0;
+}
+
+// OR A, reg8
+
+OPCODE(OR_A_A)
+{
+    regs->a |= regs->a;
+
+    regs->f.z = regs->a == 0 ? 1 : 0;
+    regs->f.n = 0;
+    regs->f.h = 0;
+    regs->f.c = 0;
+    log("DEBUG: OR A, A");
+    return 0;
+}
+
+OPCODE(OR_A_B)
+{
+    regs->a |= regs->b;
+    
+    regs->f.z = regs->a == 0 ? 1 : 0;
+    regs->f.n = 0;
+    regs->f.h = 0;
+    regs->f.c = 0;
+    log("DEBUG: OR A, B");
+    return 0;
+}
+
+OPCODE(OR_A_C)
+{
+    regs->a |= regs->c;
+    
+    regs->f.z = regs->a == 0 ? 1 : 0;
+    regs->f.n = 0;
+    regs->f.h = 0;
+    regs->f.c = 0;
+    log("DEBUG: OR A, C");
+    return 0;
+}
+
+OPCODE(OR_A_D)
+{
+    regs->a |= regs->d;
+    
+    regs->f.z = regs->a == 0 ? 1 : 0;
+    regs->f.n = 0;
+    regs->f.h = 0;
+    regs->f.c = 0;
+    log("DEBUG: OR A, D");
+    return 0;
+}
+
+OPCODE(OR_A_E)
+{
+    regs->a |= regs->e;
+    
+    regs->f.z = regs->a == 0 ? 1 : 0;
+    regs->f.n = 0;
+    regs->f.h = 0;
+    regs->f.c = 0;
+    log("DEBUG: OR A, E");
+    return 0;
+}
+
+OPCODE(OR_A_H)
+{
+    regs->a |= regs->a;
+    
+    regs->f.z = regs->a == 0 ? 1 : 0;
+    regs->f.n = 0;
+    regs->f.h = 0;
+    regs->f.c = 0;
+    log("DEBUG: OR A, H");
+    return 0;
+}
+
+OPCODE(OR_A_L)
+{
+    regs->a |= regs->l;
+    
+    regs->f.z = regs->a == 0 ? 1 : 0;
+    regs->f.n = 0;
+    regs->f.h = 0;
+    regs->f.c = 0;
+    log("DEBUG: OR A, L");
+    return 0;
+}
+
+// OR A, (HL)
+
+OPCODE(OR_A_HL)
+{
+    uint8_t val;
+
+    if (bus_read(&val, regs->hl))
+    {
+        return -1;
+    }
+
+    regs->a |= val;
+    
+    regs->f.z = regs->a == 0 ? 1 : 0;
+    regs->f.n = 0;
+    regs->f.h = 0;
+    regs->f.c = 0;
+    log("DEBUG: OR A, (HL)");
+    return 0;
+}
+
+// OR A, imm8
+
+OPCODE(OR_A_n)
+{
+    uint8_t imm8;
+
+    if (bus_read(&imm8, regs->pc + 1))
+    {
+        return -1;
+    }
+
+    regs->a |= imm8;
+    
+    regs->f.z = regs->a == 0 ? 1 : 0;
+    regs->f.n = 0;
+    regs->f.h = 0;
+    regs->f.c = 0;
+    log("DEBUG: OR A, 0x%02x", imm8);
+    return 0;
+}
+
+// OR A, reg8
+
+OPCODE(XOR_A_A)
+{
+    regs->a ^= regs->a;
+
+    regs->f.z = regs->a == 0 ? 1 : 0;
+    regs->f.n = 0;
+    regs->f.h = 0;
+    regs->f.c = 0;
+    log("DEBUG: XOR A, A");
+    return 0;
+}
+
+OPCODE(XOR_A_B)
+{
+    regs->a ^= regs->b;
+    
+    regs->f.z = regs->a == 0 ? 1 : 0;
+    regs->f.n = 0;
+    regs->f.h = 0;
+    regs->f.c = 0;
+    log("DEBUG: XOR A, B");
+    return 0;
+}
+
+OPCODE(XOR_A_C)
+{
+    regs->a ^= regs->c;
+    
+    regs->f.z = regs->a == 0 ? 1 : 0;
+    regs->f.n = 0;
+    regs->f.h = 0;
+    regs->f.c = 0;
+    log("DEBUG: XOR A, C");
+    return 0;
+}
+
+OPCODE(XOR_A_D)
+{
+    regs->a ^= regs->d;
+    
+    regs->f.z = regs->a == 0 ? 1 : 0;
+    regs->f.n = 0;
+    regs->f.h = 0;
+    regs->f.c = 0;
+    log("DEBUG: XOR A, D");
+    return 0;
+}
+
+OPCODE(XOR_A_E)
+{
+    regs->a ^= regs->e;
+    
+    regs->f.z = regs->a == 0 ? 1 : 0;
+    regs->f.n = 0;
+    regs->f.h = 0;
+    regs->f.c = 0;
+    log("DEBUG: XOR A, E");
+    return 0;
+}
+
+OPCODE(XOR_A_H)
+{
+    regs->a ^= regs->a;
+    
+    regs->f.z = regs->a == 0 ? 1 : 0;
+    regs->f.n = 0;
+    regs->f.h = 0;
+    regs->f.c = 0;
+    log("DEBUG: XOR A, H");
+    return 0;
+}
+
+OPCODE(XOR_A_L)
+{
+    regs->a ^= regs->l;
+    
+    regs->f.z = regs->a == 0 ? 1 : 0;
+    regs->f.n = 0;
+    regs->f.h = 0;
+    regs->f.c = 0;
+    log("DEBUG: XOR A, L");
+    return 0;
+}
+
+// XOR A, (HL)
+
+OPCODE(XOR_A_HL)
+{
+    uint8_t val;
+
+    if (bus_read(&val, regs->hl))
+    {
+        return -1;
+    }
+
+    regs->a ^= val;
+    
+    regs->f.z = regs->a == 0 ? 1 : 0;
+    regs->f.n = 0;
+    regs->f.h = 0;
+    regs->f.c = 0;
+    log("DEBUG: XOR A, (HL)");
+    return 0;
+}
+
+// XOR A, imm8
+
+OPCODE(XOR_A_n)
+{
+    uint8_t imm8;
+
+    if (bus_read(&imm8, regs->pc + 1))
+    {
+        return -1;
+    }
+
+    regs->a ^= imm8;
+    
+    regs->f.z = regs->a == 0 ? 1 : 0;
+    regs->f.n = 0;
+    regs->f.h = 0;
+    regs->f.c = 0;
+    log("DEBUG: XOR A, 0x%02x", imm8);
+    return 0;
+}
+
+// CP A, reg8
+
+OPCODE(CP_A_A)
+{
+    regs->f.z = SUB_ZERO(regs->a, regs->a);
+    regs->f.n = 1;
+    regs->f.h = SUB_HALF_CARRY(regs->a, regs->a);
+    regs->f.c = SUB_CARRY(regs->a, regs->a);
+
+    log("DEBUG: CP A, A");
+    return 0;
+}
+
+OPCODE(CP_A_B)
+{
+    regs->f.z = SUB_ZERO(regs->a, regs->b);
+    regs->f.n = 1;
+    regs->f.h = SUB_HALF_CARRY(regs->a, regs->b);
+    regs->f.c = SUB_CARRY(regs->a, regs->b);
+
+    log("DEBUG: CP A, B");
+    return 0;
+}
+
+OPCODE(CP_A_C)
+{
+    regs->f.z = SUB_ZERO(regs->a, regs->c);
+    regs->f.n = 1;
+    regs->f.h = SUB_HALF_CARRY(regs->a, regs->c);
+    regs->f.c = SUB_CARRY(regs->a, regs->c);
+
+    log("DEBUG: CP A, C");
+    return 0;
+}
+
+OPCODE(CP_A_D)
+{
+    regs->f.z = SUB_ZERO(regs->a, regs->d);
+    regs->f.n = 1;
+    regs->f.h = SUB_HALF_CARRY(regs->a, regs->d);
+    regs->f.c = SUB_CARRY(regs->a, regs->d);
+
+    log("DEBUG: CP A, D");
+    return 0;
+}
+
+OPCODE(CP_A_E)
+{
+    regs->f.z = SUB_ZERO(regs->a, regs->e);
+    regs->f.n = 1;
+    regs->f.h = SUB_HALF_CARRY(regs->a, regs->e);
+    regs->f.c = SUB_CARRY(regs->a, regs->e);
+
+    log("DEBUG: CP A, E");
+    return 0;
+}
+
+OPCODE(CP_A_H)
+{
+    regs->f.z = SUB_ZERO(regs->a, regs->h);
+    regs->f.n = 1;
+    regs->f.h = SUB_HALF_CARRY(regs->a, regs->h);
+    regs->f.c = SUB_CARRY(regs->a, regs->h);
+
+    log("DEBUG: CP A, H");
+    return 0;
+}
+
+OPCODE(CP_A_L)
+{
+    regs->f.z = SUB_ZERO(regs->a, regs->l);
+    regs->f.n = 1;
+    regs->f.h = SUB_HALF_CARRY(regs->a, regs->l);
+    regs->f.c = SUB_CARRY(regs->a, regs->l);
+
+    log("DEBUG: CP A, L");
+    return 0;
+}
+
+// CP A, (HL)
+
+OPCODE(CP_A_HL)
+{
+    uint8_t val;
+
+    if (bus_read(&val, regs->hl))
+    {
+        return -1;
+    }
+
+    regs->f.z = SUB_ZERO(regs->a, val);
+    regs->f.n = 1;
+    regs->f.h = SUB_HALF_CARRY(regs->a, val);
+    regs->f.c = SUB_CARRY(regs->a, val);
+
+    log("DEBUG: CP A, (HL)");
+    return 0;
+}
+
+// CP A, imm8
+
+OPCODE(CP_A_n)
+{
+    uint8_t imm8;
+
+    if (bus_read(&imm8, regs->pc + 1))
+    {
+        return -1;
+    }
+
+    regs->f.z = SUB_ZERO(regs->a, imm8);
+    regs->f.n = 1;
+    regs->f.h = SUB_HALF_CARRY(regs->a, imm8);
+    regs->f.c = SUB_CARRY(regs->a, imm8);
+
+    log("DEBUG: CP A, 0x%02x", imm8);
+    return 0;
+}
+
+// INC reg8
+
+OPCODE(INC_A)
+{
+    regs->f.z = ZERO(regs->a, 1);
+    regs->f.n = 0;
+    regs->f.h = HALF_CARRY(regs->a, 1);
+
+    regs->a++;
+    log("DEBUG: INC A");
+    return 0;
+}
+
+OPCODE(INC_B)
+{
+    regs->f.z = ZERO(regs->b, 1);
+    regs->f.n = 0;
+    regs->f.h = HALF_CARRY(regs->b, 1);
+
+    regs->b++;
+    log("DEBUG: INC B");
+    return 0;
+}
+
+OPCODE(INC_C)
+{
+    regs->f.z = ZERO(regs->c, 1);
+    regs->f.n = 0;
+    regs->f.h = HALF_CARRY(regs->c, 1);
+
+    regs->c++;
+    log("DEBUG: INC C");
+    return 0;
+}
+
+OPCODE(INC_D)
+{
+    regs->f.z = ZERO(regs->d, 1);
+    regs->f.n = 0;
+    regs->f.h = HALF_CARRY(regs->d, 1);
+
+    regs->d++;
+    log("DEBUG: INC D");
+    return 0;
+}
+
+OPCODE(INC_E)
+{
+    regs->f.z = ZERO(regs->e, 1);
+    regs->f.n = 0;
+    regs->f.h = HALF_CARRY(regs->e, 1);
+
+    regs->e++;
+    log("DEBUG: INC E");
+    return 0;
+}
+
+OPCODE(INC_H)
+{
+    regs->f.z = ZERO(regs->h, 1);
+    regs->f.n = 0;
+    regs->f.h = HALF_CARRY(regs->h, 1);
+
+    regs->h++;
+    log("DEBUG: INC H");
+    return 0;
+}
+
+OPCODE(INC_L)
+{
+    regs->f.z = ZERO(regs->l, 1);
+    regs->f.n = 0;
+    regs->f.h = HALF_CARRY(regs->l, 1);
+
+    regs->l++;
+    log("DEBUG: INC L");
+    return 0;
+}
+
+// INC (HL)
+
+OPCODE(INC_HL)
+{
+    uint8_t val;
+
+    if (bus_read(&val, regs->hl))
+    {
+        return -1;
+    }
+
+    regs->f.z = ZERO(val, 1);
+    regs->f.n = 0;
+    regs->f.h = HALF_CARRY(val, 1);
+
+    val++;
+
+    if (bus_write(val, regs->hl))
+    {
+        return -1;
+    }
+    log("DEBUG: INC (HL)");
+    return 0;
+}
+
+// DEC reg8
+
+OPCODE(DEC_A)
+{
+    regs->f.z = SUB_ZERO(regs->a, 1);
+    regs->f.n = 1;
+    regs->f.h = SUB_HALF_CARRY(regs->a, 1);
+
+    regs->a--;
+    log("DEBUG: DEC A");
+    return 0;
+}
+
+OPCODE(DEC_B)
+{
+    regs->f.z = SUB_ZERO(regs->b, 1);
+    regs->f.n = 1;
+    regs->f.h = SUB_HALF_CARRY(regs->b, 1);
+
+    regs->b--;
+    log("DEBUG: DEC B");
+    return 0;
+}
+
+OPCODE(DEC_C)
+{
+    regs->f.z = SUB_ZERO(regs->c, 1);
+    regs->f.n = 1;
+    regs->f.h = SUB_HALF_CARRY(regs->c, 1);
+
+    regs->c--;
+    log("DEBUG: DEC C");
+    return 0;
+}
+
+OPCODE(DEC_D)
+{
+    regs->f.z = SUB_ZERO(regs->d, 1);
+    regs->f.n = 1;
+    regs->f.h = SUB_HALF_CARRY(regs->d, 1);
+
+    regs->d--;
+    log("DEBUG: DEC D");
+    return 0;
+}
+
+OPCODE(DEC_E)
+{
+    regs->f.z = SUB_ZERO(regs->e, 1);
+    regs->f.n = 1;
+    regs->f.h = SUB_HALF_CARRY(regs->e, 1);
+
+    regs->e--;
+    log("DEBUG: DEC E");
+    return 0;
+}
+
+OPCODE(DEC_H)
+{
+    regs->f.z = SUB_ZERO(regs->h, 1);
+    regs->f.n = 1;
+    regs->f.h = SUB_HALF_CARRY(regs->h, 1);
+
+    regs->h--;
+    log("DEBUG: DEC H");
+    return 0;
+}
+
+OPCODE(DEC_L)
+{
+    regs->f.z = SUB_ZERO(regs->l, 1);
+    regs->f.n = 1;
+    regs->f.h = SUB_HALF_CARRY(regs->l, 1);
+
+    regs->l--;
+    log("DEBUG: DEC L");
+    return 0;
+}
+
+// DEC (HL)
+
+OPCODE(DEC_HL)
+{
+    uint8_t val;
+
+    if (bus_read(&val, regs->hl))
+    {
+        return -1;
+    }
+
+    regs->f.z = SUB_ZERO(val, 1);
+    regs->f.n = 1;
+    regs->f.h = SUB_HALF_CARRY(val, 1);
+
+    val--;
+
+    if (bus_write(val, regs->hl))
+    {
+        return -1;
+    }
+    log("DEBUG: DEC (HL)");
+    return 0;
+}
+
+// ADD HL, reg16
+
+OPCODE(ADD_HL_BC)
+{
+    regs->f.n = 0;
+    regs->f.h = (((regs->hl & 0xFFF) + (regs->bc & 0xFFF)) & 0x1000) ? 1 : 0;
+    regs->f.c = CARRY(regs->hl, regs->bc);
+
+    regs->hl += regs->bc;
+    log("DEBUG: ADD HL, BC");
+    return 0;
+}
+
+OPCODE(ADD_HL_DE)
+{
+    regs->f.n = 0;
+    regs->f.h = (((regs->hl & 0xFFF) + (regs->de & 0xFFF)) & 0x1000) ? 1 : 0;
+    regs->f.c = CARRY(regs->hl, regs->de);
+
+    regs->hl += regs->de;
+    log("DEBUG: ADD HL, DE");
+    return 0;
+}
+
+OPCODE(ADD_HL_HL)
+{
+    regs->f.n = 0;
+    regs->f.h = (((regs->hl & 0xFFF) + (regs->hl & 0xFFF)) & 0x1000) ? 1 : 0;
+    regs->f.c = CARRY(regs->hl, regs->hl);
+
+    regs->hl += regs->hl;
+    log("DEBUG: ADD HL, HL");
+    return 0;
+}
+
+OPCODE(ADD_HL_SP)
+{
+    regs->f.n = 0;
+    regs->f.h = (((regs->hl & 0xFFF) + (regs->sp & 0xFFF)) & 0x1000) ? 1 : 0;
+    regs->f.c = CARRY(regs->hl, regs->sp);
+
+    regs->hl += regs->sp;
+    log("DEBUG: ADD HL, SP");
+    return 0;
+}
+
+// ADD SP, imm8
+
+OPCODE(ADD_SP_n)
+{
+    uint8_t imm8;
+
+    if (bus_read(&imm8, regs->pc + 1))
+    {
+        return -1;
+    }
+
+    regs->f.z = 0;
+    regs->f.n = 0;
+    regs->f.h = HALF_CARRY(regs->sp, imm8);
+    regs->f.c = CARRY(regs->sp, imm8);
+
+    regs->sp += imm8;
+    log("DEBUG: ADD SP, 0x%02x", imm8);
+    return 0;
+}
+
+// INC reg16
+
+OPCODE(INC_BC)
+{
+    regs->bc++;
+    log("DEBUG: INC BC");
+    return 0;
+}
+
+OPCODE(INC_DE)
+{
+    regs->de++;
+    log("DEBUG: INC DE");
+    return 0;
+}
+
+OPCODE(INC_HL_2)
+{
+    regs->hl++;
+    log("DEBUG: INC HL");
+    return 0;
+}
+
+OPCODE(INC_SP)
+{
+    regs->sp++;
+    log("DEBUG: INC SP");
+    return 0;
+}
+
+// DEC reg16
+
+OPCODE(DEC_BC)
+{
+    regs->bc--;
+    log("DEBUG: DEC BC");
+    return 0;
+}
+
+OPCODE(DEC_DE)
+{
+    regs->de--;
+    log("DEBUG: DEC DE");
+    return 0;
+}
+
+OPCODE(DEC_HL_2)
+{
+    regs->hl--;
+    log("DEBUG: DEC HL");
+    return 0;
+}
+
+OPCODE(DEC_SP)
+{
+    regs->sp--;
+    log("DEBUG: DEC SP");
+    return 0;
+}
+
 void register_opcodes()
 {
     /* ----------- Misc. ----------- */
@@ -1596,7 +2693,7 @@ void register_opcodes()
     ADD_OPCODE(0x94, 1, 4, SUB_A_H);
     ADD_OPCODE(0x95, 1, 4, SUB_A_L);
 
-    // SSUB A, (HL)
+    // SUB A, (HL)
     ADD_OPCODE(0x96, 1, 8, SUB_A_HL);
 
     // SUB A, imm8
@@ -1617,4 +2714,110 @@ void register_opcodes()
     // SBC A, imm8
     ADD_OPCODE(0xDE, 2, 8, SBC_A_n);
 
+    // AND A, reg8
+    ADD_OPCODE(0xA7, 1, 4, AND_A_A);
+    ADD_OPCODE(0xA0, 1, 4, AND_A_B);
+    ADD_OPCODE(0xA1, 1, 4, AND_A_C);
+    ADD_OPCODE(0xA2, 1, 4, AND_A_D);
+    ADD_OPCODE(0xA3, 1, 4, AND_A_E);
+    ADD_OPCODE(0xA4, 1, 4, AND_A_H);
+    ADD_OPCODE(0xA5, 1, 4, AND_A_L);
+
+    // AND A, (HL)
+    ADD_OPCODE(0xA6, 1, 8, AND_A_HL);
+    
+    // AND, A, imm8
+    ADD_OPCODE(0xE6, 2, 8, AND_A_n);
+
+    // OR A, reg8
+    ADD_OPCODE(0xB7, 1, 4, OR_A_A);
+    ADD_OPCODE(0xB0, 1, 4, OR_A_B);
+    ADD_OPCODE(0xB1, 1, 4, OR_A_C);
+    ADD_OPCODE(0xB2, 1, 4, OR_A_D);
+    ADD_OPCODE(0xB3, 1, 4, OR_A_E);
+    ADD_OPCODE(0xB4, 1, 4, OR_A_H);
+    ADD_OPCODE(0xB5, 1, 4, OR_A_L);
+
+    // OR A, (HL)
+    ADD_OPCODE(0xB6, 1, 8, OR_A_HL);
+    
+    // OR, A, imm8
+    ADD_OPCODE(0xF6, 2, 8, OR_A_n);
+
+    // XOR A, reg8
+    ADD_OPCODE(0xAF, 1, 4, XOR_A_A);
+    ADD_OPCODE(0xA8, 1, 4, XOR_A_B);
+    ADD_OPCODE(0xA9, 1, 4, XOR_A_C);
+    ADD_OPCODE(0xAA, 1, 4, XOR_A_D);
+    ADD_OPCODE(0xAB, 1, 4, XOR_A_E);
+    ADD_OPCODE(0xAC, 1, 4, XOR_A_H);
+    ADD_OPCODE(0xAD, 1, 4, XOR_A_L);
+
+    // XOR A, (HL)
+    ADD_OPCODE(0xAE, 1, 8, XOR_A_HL);
+    
+    // XOR, A, imm8
+    ADD_OPCODE(0xEE, 2, 8, XOR_A_n);
+
+    // CP A, reg8
+    ADD_OPCODE(0xBF, 1, 4, CP_A_A);
+    ADD_OPCODE(0xB8, 1, 4, CP_A_B);
+    ADD_OPCODE(0xB9, 1, 4, CP_A_C);
+    ADD_OPCODE(0xBA, 1, 4, CP_A_D);
+    ADD_OPCODE(0xBB, 1, 4, CP_A_E);
+    ADD_OPCODE(0xBC, 1, 4, CP_A_H);
+    ADD_OPCODE(0xBD, 1, 4, CP_A_L);
+
+    // CP A, (HL)
+    ADD_OPCODE(0xBE, 1, 8, CP_A_HL);
+
+    // CP A, imm8
+    ADD_OPCODE(0xFE, 2, 8, CP_A_n);
+
+    // INC reg8
+    ADD_OPCODE(0x3C, 1, 4, INC_A);
+    ADD_OPCODE(0x04, 1, 4, INC_B);
+    ADD_OPCODE(0x0C, 1, 4, INC_C);
+    ADD_OPCODE(0x14, 1, 4, INC_D);
+    ADD_OPCODE(0x1C, 1, 4, INC_E);
+    ADD_OPCODE(0x24, 1, 4, INC_H);
+    ADD_OPCODE(0x2C, 1, 4, INC_L);
+
+    // INC (HL)
+    ADD_OPCODE(0x34, 1, 12, INC_HL);
+
+    // DEC reg8
+    ADD_OPCODE(0x3D, 1, 4, DEC_A);
+    ADD_OPCODE(0x05, 1, 4, DEC_B);
+    ADD_OPCODE(0x0D, 1, 4, DEC_C);
+    ADD_OPCODE(0x15, 1, 4, DEC_D);
+    ADD_OPCODE(0x1D, 1, 4, DEC_E);
+    ADD_OPCODE(0x25, 1, 4, DEC_H);
+    ADD_OPCODE(0x2D, 1, 4, DEC_L);
+
+    // DEC (HL)
+    ADD_OPCODE(0x35, 1, 12, DEC_HL);
+
+    /* ---------- 16-Bit ALU -------- */
+
+    // ADD HL, reg16
+    ADD_OPCODE(0x09, 1, 8, ADD_HL_BC);
+    ADD_OPCODE(0x19, 1, 8, ADD_HL_DE);
+    ADD_OPCODE(0x29, 1, 8, ADD_HL_HL);
+    ADD_OPCODE(0x39, 1, 8, ADD_HL_SP);
+
+    // ADD SP, imm8
+    ADD_OPCODE(0xE8, 2, 16, ADD_SP_n);
+
+    // INC reg16
+    ADD_OPCODE(0x03, 1, 8, INC_BC);
+    ADD_OPCODE(0x13, 1, 8, INC_DE);
+    ADD_OPCODE(0x23, 1, 8, INC_HL_2);
+    ADD_OPCODE(0x33, 1, 8, INC_SP);
+
+    // DEC reg16
+    ADD_OPCODE(0x03, 1, 8, DEC_BC);
+    ADD_OPCODE(0x13, 1, 8, DEC_DE);
+    ADD_OPCODE(0x23, 1, 8, DEC_HL_2);
+    ADD_OPCODE(0x33, 1, 8, DEC_SP);
 }
