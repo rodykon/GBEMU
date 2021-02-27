@@ -6,3 +6,6 @@ build/**
 
 # clion
 .idea/**
+
+# vscode
+.vscode/**
