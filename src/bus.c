@@ -30,15 +30,21 @@ static struct bus_connection * find_connection(uint16_t address)
 
 int add_bus_connection(uint16_t start_address, uint16_t size, bus_read_t read_func, bus_write_t write_func)
 {
-	struct bus_connection *new_connection = (struct bus_connection*)malloc(sizeof(struct bus_connection));
+	struct bus_connection *new_connection;
 	struct bus_connection *current = bus_list;
+	
+	new_connection = (struct bus_connection*)malloc(sizeof(struct bus_connection));
+	if (new_connection == NULL)
+	{
+		return -1;
+	}
 	
 	new_connection->start_address = start_address;
 	new_connection->size = size;
 	new_connection->read_func = read_func;
 	new_connection->write_func = write_func;
 	new_connection->next = NULL;
-	
+
 	if (current == NULL)
 	{
 		bus_list = new_connection;
@@ -70,8 +76,8 @@ int add_bus_connection(uint16_t start_address, uint16_t size, bus_read_t read_fu
 			return 0;
 		}
 	}
-	
-	if (new_connection->start_address > current->next->start_address + current->next->size)
+
+	if (new_connection->start_address > current->start_address + current->size)
 	{
 		current->next = new_connection;
 		return 0;

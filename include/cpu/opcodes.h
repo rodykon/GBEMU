@@ -2,10 +2,11 @@
 #define OPCODES__
 
 #include "cpu/registers.h"
+#include "cpu/cpu.h"
 
 #define NUM_OPCODES 0x100
  
-typedef int(*opcode_func_t)(struct registers *regs);
+typedef int(*opcode_func_t)(struct registers *regs, enum cpu_state *state);
  
 struct opcode {
     opcode_func_t func;
@@ -15,7 +16,7 @@ struct opcode {
 
 struct opcode opcodes[NUM_OPCODES];
 
-#define OPCODE(name) int name(struct registers *regs)
+#define OPCODE(name) int name(struct registers *regs, enum cpu_state *state)
 #define ADD_OPCODE(_opcode, _size, _cycles, _func) opcodes[_opcode].func = _func; \
                                                    opcodes[_opcode].size = _size; \
                                                    opcodes[_opcode].cycles = _cycles;
