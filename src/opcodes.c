@@ -32,11 +32,137 @@ static void dec_byte(uint8_t *val, struct registers *regs)
     regs->f.n = 1;
 }
 
+static uint8_t swap(uint8_t to_swap, struct registers *regs)
+{
+    uint8_t result = ((to_swap << 4) & 0xF0) | ((to_swap >> 4) & 0x0F);
+    regs->f.z = result ? regs->f.z : 1;
+    regs->f.n = 0;
+    regs->f.h = 0;
+    regs->f.c = 0;
+    return result;
+}
+
 /* ----------- Misc. ----------- */
 
 OPCODE(NOP)
 {
-    log("DEBUG: NOP");
+    log(LDEBUG "NOP");
+    return 0;
+}
+
+OPCODE(CB)
+{
+    uint8_t type;
+
+    if (bus_read(&type, regs->pc + 1))
+    {
+        return -1;
+    }
+
+    switch (type)
+    {
+        case 0x37:
+            regs->a = swap(regs->a, regs);
+            log(LDEBUG "SWAP A");
+            break;
+        case 0x30:
+            regs->b = swap(regs->b, regs);
+            log(LDEBUG "SWAP B");
+            break;
+        case 0x31:
+            regs->c = swap(regs->c, regs);
+            log(LDEBUG "SWAP C");
+            break;
+        case 0x32:
+            regs->d = swap(regs->d, regs);
+            log(LDEBUG "SWAP D");
+            break;
+        case 0x33:
+            regs->e = swap(regs->e, regs);
+            log(LDEBUG "SWAP E");
+            break;
+        case 0x34:
+            regs->h = swap(regs->h, regs);
+            log(LDEBUG "SWAP H");
+            break;
+        case 0x35:
+            regs->l = swap(regs->l, regs);
+            log(LDEBUG "SWAP L");
+            break;
+        case 0x36:
+            uint8_t value;
+            if (bus_read(&value, regs->hl) | bus_write(swap(value, regs), regs->hl))
+            {
+                return -1;
+            }
+            log(LDEBUG "SWAP (HL)");
+            break;
+    }
+
+    return 0;
+}
+
+OPCODE(DAA)
+{
+    if (!regs->f.n) {  // Addition
+        if (regs->f.c || regs->a > 0x99) { regs->a += 0x60; regs->f.c = 1; } // Carry or top nibble overflow.
+        if (regs->f.h || (regs->a & 0x0f) > 0x09) { regs->a += 0x6; } // Half-carry or low nibble overflow.
+    } else {  // Subtraction
+        if (regs->f.c) { regs->a -= 0x60; } // Carry
+        if (regs->f.h) { regs->a -= 0x6; } // Half-carry
+    }
+
+    regs->f.z = (regs->a == 0);
+    regs->f.h = 0;
+
+    log(LDEBUG "DAA");
+    return 0;
+}
+
+OPCODE(CPL)
+{
+    regs->a = ~regs->a;
+
+    regs->f.n = 1;
+    regs->f.h = 1;
+
+    log(LDEBUG "CPL");
+    return 0;
+}
+
+OPCODE(CCF)
+{
+    regs->f.c = ~regs->f.c;
+
+    regs->f.n = 0;
+    regs->f.h = 0;
+    
+    log(LDEBUG "CCF");
+    return 0;
+}
+
+OPCODE(SCF)
+{
+    regs->f.c = 1;
+
+    regs->f.n = 0;
+    regs->f.h = 0;
+    
+    log(LDEBUG "SCF");
+    return 0;
+}
+
+OPCODE(HALT)
+{
+    *state = STATE_HALT;
+    log(LDEBUG "HALT");
+    return 0;
+}
+
+OPCODE(STOP)
+{
+    *state = STATE_STOP;
+    log(LDEBUG "STOP");
     return 0;
 }
 
@@ -52,7 +178,7 @@ OPCODE(LD_B_n)
         return -1;
     }
     regs->b = arg;
-    log("LD B, 0x%02x", arg);
+    log(LDEBUG "LD B, 0x%02x", arg);
     return 0;
 }
 
@@ -64,7 +190,7 @@ OPCODE(LD_C_n)
         return -1;
     }
     regs->c = arg;
-    log("LD C, 0x%02x", arg);
+    log(LDEBUG "LD C, 0x%02x", arg);
     return 0;
 }
 
@@ -76,7 +202,7 @@ OPCODE(LD_D_n)
         return -1;
     }
     regs->d = arg;
-    log("LD D, 0x%02x", arg);
+    log(LDEBUG "LD D, 0x%02x", arg);
     return 0;
 }
 
@@ -88,7 +214,7 @@ OPCODE(LD_E_n)
         return -1;
     }
     regs->e = arg;
-    log("LD E, 0x%02x", arg);
+    log(LDEBUG "LD E, 0x%02x", arg);
     return 0;
 }
 
@@ -100,7 +226,7 @@ OPCODE(LD_H_n)
         return -1;
     }
     regs->h = arg;
-    log("LD H, 0x%02x", arg);
+    log(LDEBUG "LD H, 0x%02x", arg);
     return 0;
 }
 
@@ -112,7 +238,7 @@ OPCODE(LD_L_n)
         return -1;
     }
     regs->l = arg;
-    log("LD L, 0x%02x", arg);
+    log(LDEBUG "LD L, 0x%02x", arg);
     return 0;
 }
 
@@ -120,7 +246,7 @@ OPCODE(LD_L_n)
 
 OPCODE(LD_A_A)
 {
-    log("DEBUG: LD A, A");
+    log(LDEBUG "LD A, A");
     return 0;
 }
 
@@ -128,7 +254,7 @@ OPCODE(LD_A_A)
 OPCODE(LD_A_B)
 {
     regs->a = regs->b;
-    log("DEBUG: LD A, B");
+    log(LDEBUG "LD A, B");
     return 0;
 }
 
@@ -136,7 +262,7 @@ OPCODE(LD_A_B)
 OPCODE(LD_A_C)
 {
     regs->a = regs->c;
-    log("DEBUG: LD A, C");
+    log(LDEBUG "LD A, C");
     return 0;
 }
 
@@ -144,7 +270,7 @@ OPCODE(LD_A_C)
 OPCODE(LD_A_D)
 {
     regs->a = regs->d;
-    log("DEBUG: LD A, D");
+    log(LDEBUG "LD A, D");
     return 0;
 }
 
@@ -152,7 +278,7 @@ OPCODE(LD_A_D)
 OPCODE(LD_A_E)
 {
     regs->a = regs->e;
-    log("DEBUG: LD A, E");
+    log(LDEBUG "LD A, E");
     return 0;
 }
 
@@ -160,7 +286,7 @@ OPCODE(LD_A_E)
 OPCODE(LD_A_H)
 {
     regs->a = regs->h;
-    log("DEBUG: LD A, H");
+    log(LDEBUG "LD A, H");
     return 0;
 }
 
@@ -168,7 +294,7 @@ OPCODE(LD_A_H)
 OPCODE(LD_A_L)
 {
     regs->a = regs->l;
-    log("DEBUG: LD A, L");
+    log(LDEBUG "LD A, L");
     return 0;
 }
 
@@ -176,13 +302,13 @@ OPCODE(LD_A_L)
 OPCODE(LD_B_A)
 {
     regs->b = regs->a;
-    log("DEBUG: LD B, A");
+    log(LDEBUG "LD B, A");
     return 0;
 }
 
 OPCODE(LD_B_B)
 {
-    log("DEBUG: LD B, B");
+    log(LDEBUG "LD B, B");
     return 0;
 }
 
@@ -190,7 +316,7 @@ OPCODE(LD_B_B)
 OPCODE(LD_B_C)
 {
     regs->b = regs->c;
-    log("DEBUG: LD B, C");
+    log(LDEBUG "LD B, C");
     return 0;
 }
 
@@ -198,7 +324,7 @@ OPCODE(LD_B_C)
 OPCODE(LD_B_D)
 {
     regs->b = regs->d;
-    log("DEBUG: LD B, D");
+    log(LDEBUG "LD B, D");
     return 0;
 }
 
@@ -206,7 +332,7 @@ OPCODE(LD_B_D)
 OPCODE(LD_B_E)
 {
     regs->b = regs->e;
-    log("DEBUG: LD B, E");
+    log(LDEBUG "LD B, E");
     return 0;
 }
 
@@ -214,7 +340,7 @@ OPCODE(LD_B_E)
 OPCODE(LD_B_H)
 {
     regs->b = regs->h;
-    log("DEBUG: LD B, H");
+    log(LDEBUG "LD B, H");
     return 0;
 }
 
@@ -222,7 +348,7 @@ OPCODE(LD_B_H)
 OPCODE(LD_B_L)
 {
     regs->b = regs->l;
-    log("DEBUG: LD B, L");
+    log(LDEBUG "LD B, L");
     return 0;
 }
 
@@ -230,7 +356,7 @@ OPCODE(LD_B_L)
 OPCODE(LD_C_A)
 {
     regs->c = regs->a;
-    log("DEBUG: LD C, A");
+    log(LDEBUG "LD C, A");
     return 0;
 }
 
@@ -238,13 +364,13 @@ OPCODE(LD_C_A)
 OPCODE(LD_C_B)
 {
     regs->c = regs->b;
-    log("DEBUG: LD C, B");
+    log(LDEBUG "LD C, B");
     return 0;
 }
 
 OPCODE(LD_C_C)
 {
-    log("DEBUG: LD C, C");
+    log(LDEBUG "LD C, C");
     return 0;
 }
 
@@ -252,7 +378,7 @@ OPCODE(LD_C_C)
 OPCODE(LD_C_D)
 {
     regs->c = regs->d;
-    log("DEBUG: LD C, D");
+    log(LDEBUG "LD C, D");
     return 0;
 }
 
@@ -260,7 +386,7 @@ OPCODE(LD_C_D)
 OPCODE(LD_C_E)
 {
     regs->c = regs->e;
-    log("DEBUG: LD C, E");
+    log(LDEBUG "LD C, E");
     return 0;
 }
 
@@ -268,7 +394,7 @@ OPCODE(LD_C_E)
 OPCODE(LD_C_H)
 {
     regs->c = regs->h;
-    log("DEBUG: LD C, H");
+    log(LDEBUG "LD C, H");
     return 0;
 }
 
@@ -276,7 +402,7 @@ OPCODE(LD_C_H)
 OPCODE(LD_C_L)
 {
     regs->c = regs->l;
-    log("DEBUG: LD C, L");
+    log(LDEBUG "LD C, L");
     return 0;
 }
 
@@ -284,7 +410,7 @@ OPCODE(LD_C_L)
 OPCODE(LD_D_A)
 {
     regs->d = regs->a;
-    log("DEBUG: LD D, A");
+    log(LDEBUG "LD D, A");
     return 0;
 }
 
@@ -292,7 +418,7 @@ OPCODE(LD_D_A)
 OPCODE(LD_D_B)
 {
     regs->d = regs->b;
-    log("DEBUG: LD D, B");
+    log(LDEBUG "LD D, B");
     return 0;
 }
 
@@ -300,13 +426,13 @@ OPCODE(LD_D_B)
 OPCODE(LD_D_C)
 {
     regs->d = regs->c;
-    log("DEBUG: LD D, C");
+    log(LDEBUG "LD D, C");
     return 0;
 }
 
 OPCODE(LD_D_D)
 {
-    log("DEBUG: LD D, D");
+    log(LDEBUG "LD D, D");
     return 0;
 }
 
@@ -314,7 +440,7 @@ OPCODE(LD_D_D)
 OPCODE(LD_D_E)
 {
     regs->d = regs->e;
-    log("DEBUG: LD D, E");
+    log(LDEBUG "LD D, E");
     return 0;
 }
 
@@ -322,7 +448,7 @@ OPCODE(LD_D_E)
 OPCODE(LD_D_H)
 {
     regs->d = regs->h;
-    log("DEBUG: LD D, H");
+    log(LDEBUG "LD D, H");
     return 0;
 }
 
@@ -330,7 +456,7 @@ OPCODE(LD_D_H)
 OPCODE(LD_D_L)
 {
     regs->d = regs->l;
-    log("DEBUG: LD D, L");
+    log(LDEBUG "LD D, L");
     return 0;
 }
 
@@ -338,7 +464,7 @@ OPCODE(LD_D_L)
 OPCODE(LD_E_A)
 {
     regs->e = regs->a;
-    log("DEBUG: LD E, A");
+    log(LDEBUG "LD E, A");
     return 0;
 }
 
@@ -346,7 +472,7 @@ OPCODE(LD_E_A)
 OPCODE(LD_E_B)
 {
     regs->e = regs->b;
-    log("DEBUG: LD E, B");
+    log(LDEBUG "LD E, B");
     return 0;
 }
 
@@ -354,7 +480,7 @@ OPCODE(LD_E_B)
 OPCODE(LD_E_C)
 {
     regs->e = regs->c;
-    log("DEBUG: LD E, C");
+    log(LDEBUG "LD E, C");
     return 0;
 }
 
@@ -362,13 +488,13 @@ OPCODE(LD_E_C)
 OPCODE(LD_E_D)
 {
     regs->e = regs->d;
-    log("DEBUG: LD E, D");
+    log(LDEBUG "LD E, D");
     return 0;
 }
 
 OPCODE(LD_E_E)
 {
-    log("DEBUG: LD E, E");
+    log(LDEBUG "LD E, E");
     return 0;
 }
 
@@ -376,7 +502,7 @@ OPCODE(LD_E_E)
 OPCODE(LD_E_H)
 {
     regs->e = regs->h;
-    log("DEBUG: LD E, H");
+    log(LDEBUG "LD E, H");
     return 0;
 }
 
@@ -384,7 +510,7 @@ OPCODE(LD_E_H)
 OPCODE(LD_E_L)
 {
     regs->e = regs->l;
-    log("DEBUG: LD E, L");
+    log(LDEBUG "LD E, L");
     return 0;
 }
 
@@ -392,7 +518,7 @@ OPCODE(LD_E_L)
 OPCODE(LD_H_A)
 {
     regs->h = regs->a;
-    log("DEBUG: LD H, A");
+    log(LDEBUG "LD H, A");
     return 0;
 }
 
@@ -400,7 +526,7 @@ OPCODE(LD_H_A)
 OPCODE(LD_H_B)
 {
     regs->h = regs->b;
-    log("DEBUG: LD H, B");
+    log(LDEBUG "LD H, B");
     return 0;
 }
 
@@ -408,7 +534,7 @@ OPCODE(LD_H_B)
 OPCODE(LD_H_C)
 {
     regs->h = regs->c;
-    log("DEBUG: LD H, C");
+    log(LDEBUG "LD H, C");
     return 0;
 }
 
@@ -416,7 +542,7 @@ OPCODE(LD_H_C)
 OPCODE(LD_H_D)
 {
     regs->h = regs->d;
-    log("DEBUG: LD H, D");
+    log(LDEBUG "LD H, D");
     return 0;
 }
 
@@ -424,13 +550,13 @@ OPCODE(LD_H_D)
 OPCODE(LD_H_E)
 {
     regs->h = regs->e;
-    log("DEBUG: LD H, E");
+    log(LDEBUG "LD H, E");
     return 0;
 }
 
 OPCODE(LD_H_H)
 {
-    log("DEBUG: LD H, H");
+    log(LDEBUG "LD H, H");
     return 0;
 }
 
@@ -438,7 +564,7 @@ OPCODE(LD_H_H)
 OPCODE(LD_H_L)
 {
     regs->h = regs->l;
-    log("DEBUG: LD H, L");
+    log(LDEBUG "LD H, L");
     return 0;
 }
 
@@ -446,7 +572,7 @@ OPCODE(LD_H_L)
 OPCODE(LD_L_A)
 {
     regs->l = regs->a;
-    log("DEBUG: LD L, A");
+    log(LDEBUG "LD L, A");
     return 0;
 }
 
@@ -454,7 +580,7 @@ OPCODE(LD_L_A)
 OPCODE(LD_L_B)
 {
     regs->l = regs->b;
-    log("DEBUG: LD L, B");
+    log(LDEBUG "LD L, B");
     return 0;
 }
 
@@ -462,7 +588,7 @@ OPCODE(LD_L_B)
 OPCODE(LD_L_C)
 {
     regs->l = regs->c;
-    log("DEBUG: LD L, C");
+    log(LDEBUG "LD L, C");
     return 0;
 }
 
@@ -470,7 +596,7 @@ OPCODE(LD_L_C)
 OPCODE(LD_L_D)
 {
     regs->l = regs->d;
-    log("DEBUG: LD L, D");
+    log(LDEBUG "LD L, D");
     return 0;
 }
 
@@ -478,7 +604,7 @@ OPCODE(LD_L_D)
 OPCODE(LD_L_E)
 {
     regs->l = regs->e;
-    log("DEBUG: LD L, E");
+    log(LDEBUG "LD L, E");
     return 0;
 }
 
@@ -486,13 +612,13 @@ OPCODE(LD_L_E)
 OPCODE(LD_L_H)
 {
     regs->l = regs->h;
-    log("DEBUG: LD L, H");
+    log(LDEBUG "LD L, H");
     return 0;
 }
 
 OPCODE(LD_L_L)
 {
-    log("DEBUG: LD L, L");
+    log(LDEBUG "LD L, L");
     return 0;
 }
 
@@ -507,7 +633,7 @@ OPCODE(LD_A_BC)
         return -1;
     }
     regs->a = new_val;
-    log("DEBUG: LD A, (BC)");
+    log(LDEBUG "LD A, (BC)");
     return 0;
 }
 
@@ -520,7 +646,7 @@ OPCODE(LD_A_DE)
         return -1;
     }
     regs->a = new_val;
-    log("DEBUG: LD A, (DE)");
+    log(LDEBUG "LD A, (DE)");
     return 0;
 }
 
@@ -533,7 +659,7 @@ OPCODE(LD_A_HL)
         return -1;
     }
     regs->a = new_val;
-    log("DEBUG: LD A, (HL)");
+    log(LDEBUG "LD A, (HL)");
     return 0;
 }
 
@@ -546,7 +672,7 @@ OPCODE(LD_B_HL)
         return -1;
     }
     regs->b = new_val;
-    log("DEBUG: LD B, (HL)");
+    log(LDEBUG "LD B, (HL)");
     return 0;
 }
 
@@ -559,7 +685,7 @@ OPCODE(LD_C_HL)
         return -1;
     }
     regs->c = new_val;
-    log("DEBUG: LD C, (HL)");
+    log(LDEBUG "LD C, (HL)");
     return 0;
 }
 
@@ -572,7 +698,7 @@ OPCODE(LD_D_HL)
         return -1;
     }
     regs->d = new_val;
-    log("DEBUG: LD D, (HL)");
+    log(LDEBUG "LD D, (HL)");
     return 0;
 }
 
@@ -585,7 +711,7 @@ OPCODE(LD_E_HL)
         return -1;
     }
     regs->e = new_val;
-    log("DEBUG: LD E, (HL)");
+    log(LDEBUG "LD E, (HL)");
     return 0;
 }
 
@@ -598,7 +724,7 @@ OPCODE(LD_H_HL)
         return -1;
     }
     regs->h = new_val;
-    log("DEBUG: LD H, (HL)");
+    log(LDEBUG "LD H, (HL)");
     return 0;
 }
 
@@ -611,7 +737,7 @@ OPCODE(LD_L_HL)
         return -1;
     }
     regs->l = new_val;
-    log("DEBUG: LD L, (HL)");
+    log(LDEBUG "LD L, (HL)");
     return 0;
 }
 
@@ -623,7 +749,7 @@ OPCODE(LD_BC_A)
     {
         return -1;
     }
-    log("DEBUG: LD (BC), A");
+    log(LDEBUG "LD (BC), A");
     return 0;
 }
 
@@ -633,7 +759,7 @@ OPCODE(LD_DE_A)
     {
         return -1;
     }
-    log("DEBUG: LD (DE), A");
+    log(LDEBUG "LD (DE), A");
     return 0;
 }
 
@@ -643,7 +769,7 @@ OPCODE(LD_HL_A)
     {
         return -1;
     }
-    log("DEBUG: LD (HL), A");
+    log(LDEBUG "LD (HL), A");
     return 0;
 }
 
@@ -653,7 +779,7 @@ OPCODE(LD_HL_B)
     {
         return -1;
     }
-    log("DEBUG: LD (HL), B");
+    log(LDEBUG "LD (HL), B");
     return 0;
 }
 
@@ -663,7 +789,7 @@ OPCODE(LD_HL_C)
     {
         return -1;
     }
-    log("DEBUG: LD (HL), C");
+    log(LDEBUG "LD (HL), C");
     return 0;
 }
 
@@ -673,7 +799,7 @@ OPCODE(LD_HL_D)
     {
         return -1;
     }
-    log("DEBUG: LD (HL), D");
+    log(LDEBUG "LD (HL), D");
     return 0;
 }
 
@@ -683,7 +809,7 @@ OPCODE(LD_HL_E)
     {
         return -1;
     }
-    log("DEBUG: LD (HL), E");
+    log(LDEBUG "LD (HL), E");
     return 0;
 }
 
@@ -693,7 +819,7 @@ OPCODE(LD_HL_H)
     {
         return -1;
     }
-    log("DEBUG: LD (HL), H");
+    log(LDEBUG "LD (HL), H");
     return 0;
 }
 
@@ -703,7 +829,7 @@ OPCODE(LD_HL_L)
     {
         return -1;
     }
-    log("DEBUG: LD (HL), L");
+    log(LDEBUG "LD (HL), L");
     return 0;
 }
 
@@ -722,7 +848,7 @@ OPCODE(LD_HL_n)
     {
         return -1;
     }
-    log("DEBUG: LD (HL), 0x%02x", imm8);
+    log(LDEBUG "LD (HL), 0x%02x", imm8);
     return 0;
 }
 
@@ -743,7 +869,7 @@ OPCODE(LD_A_nn)
         return -1;
     }
     regs->a = val;
-    log("DEBUG: LD A, (0x%02x)", imm16);
+    log(LDEBUG "LD A, (0x%02x)", imm16);
     return 0;
 }
 
@@ -763,7 +889,7 @@ OPCODE(LD_nn_A)
         return -1;
     }
 
-    log("DEBUG: LD (0x%02x), A", imm16);
+    log(LDEBUG "LD (0x%02x), A", imm16);
     return 0;
 }
 
@@ -779,7 +905,7 @@ OPCODE(LD_A_C2)
     }
     regs->a = val;
 
-    log("DEBUG: LD A, (C)");
+    log(LDEBUG "LD A, (C)");
     return 0;
 }
 
@@ -792,7 +918,7 @@ OPCODE(LD_C_A2)
         return -1;
     }
 
-    log("DEBUG: LD (C), A");
+    log(LDEBUG "LD (C), A");
     return 0;
 }
 
@@ -809,7 +935,7 @@ OPCODE(LDD_A_HL)
     regs->a = val;
     regs->hl--;
 
-    log("DEBUG: LDD A, (HL)");
+    log(LDEBUG "LDD A, (HL)");
     return 0;
 }
 
@@ -823,7 +949,7 @@ OPCODE(LDD_HL_A)
     }
     regs->hl--;
 
-    log("DEBUG: LDD (HL), A");
+    log(LDEBUG "LDD (HL), A");
     return 0;
 }
 
@@ -840,7 +966,7 @@ OPCODE(LDI_A_HL)
     regs->a = val;
     regs->hl++;
 
-    log("DEBUG: LDI A, (HL)");
+    log(LDEBUG "LDI A, (HL)");
     return 0;
 }
 
@@ -854,7 +980,7 @@ OPCODE(LDI_HL_A)
     }
     regs->hl++;
 
-    log("DEBUG: LDI (HL), A");
+    log(LDEBUG "LDI (HL), A");
     return 0;
 }
 
@@ -873,7 +999,7 @@ OPCODE(LDH_n_A)
         return -1;
     }
 
-    log("DEBUG: LDH (0x%02x), A", imm8);
+    log(LDEBUG "LDH (0x%02x), A", imm8);
     return 0;
 }
 
@@ -893,7 +1019,7 @@ OPCODE(LDH_A_n)
     }
     regs->a = val;
 
-    log("DEBUG: LDH A, (0x%02x)", imm8);
+    log(LDEBUG "LDH A, (0x%02x)", imm8);
     return 0;
 }
 
@@ -911,7 +1037,7 @@ OPCODE(LD_BC_nn)
     }
     regs->bc = imm16;
 
-    log("DEBUG: LD BC, 0x%04x", imm16);
+    log(LDEBUG "LD BC, 0x%04x", imm16);
     return 0;
 }
 
@@ -925,7 +1051,7 @@ OPCODE(LD_DE_nn)
     }
     regs->de = imm16;
 
-    log("DEBUG: LD DE, 0x%04x", imm16);
+    log(LDEBUG "LD DE, 0x%04x", imm16);
     return 0;
 }
 
@@ -939,7 +1065,7 @@ OPCODE(LD_HL_nn)
     }
     regs->hl = imm16;
 
-    log("DEBUG: LD HL, 0x%04x", imm16);
+    log(LDEBUG "LD HL, 0x%04x", imm16);
     return 0;
 }
 
@@ -953,7 +1079,7 @@ OPCODE(LD_SP_nn)
     }
     regs->sp = imm16;
 
-    log("DEBUG: LD SP, 0x%04x", imm16);
+    log(LDEBUG "LD SP, 0x%04x", imm16);
     return 0;
 }
 
@@ -963,7 +1089,7 @@ OPCODE(LD_SP_HL)
 {
     regs->sp = regs->hl;
 
-    log("DEBUG: LD SP, HL");
+    log(LDEBUG "LD SP, HL");
     return 0;
 }
 
@@ -985,7 +1111,7 @@ OPCODE(LDHL_SP_n)
     regs->f.c = CARRY(regs->sp & 0xFF, imm8);
 
     regs->hl = regs->sp + imm8;
-    log("DEBUG: LDHL SP, 0x%02x", imm8);
+    log(LDEBUG "LDHL SP, 0x%02x", imm8);
     return 0;
 }
 
@@ -1005,7 +1131,7 @@ OPCODE(LD_nn_SP)
         return -1;
     }
 
-    log("DEBUG: LD (0x%04x), SP", imm16);
+    log(LDEBUG "LD (0x%04x), SP", imm16);
     return 0;
 }
 
@@ -1020,7 +1146,7 @@ OPCODE(PUSH_AF)
         return -1;
     }
 
-    log("DEBUG: PUSH AF");
+    log(LDEBUG "PUSH AF");
     return 0;
 }
 
@@ -1033,7 +1159,7 @@ OPCODE(PUSH_BC)
         return -1;
     }
 
-    log("DEBUG: PUSH BC");
+    log(LDEBUG "PUSH BC");
     return 0;
 }
 
@@ -1046,7 +1172,7 @@ OPCODE(PUSH_DE)
         return -1;
     }
 
-    log("DEBUG: PUSH DE");
+    log(LDEBUG "PUSH DE");
     return 0;
 }
 
@@ -1059,7 +1185,7 @@ OPCODE(PUSH_HL)
         return -1;
     }
 
-    log("DEBUG: PUSH HL");
+    log(LDEBUG "PUSH HL");
     return 0;
 }
 
@@ -1073,7 +1199,7 @@ OPCODE(POP_AF)
     }
     regs->sp += 2;
 
-    log("DEBUG: POP AF");
+    log(LDEBUG "POP AF");
     return 0;
 }
 
@@ -1085,7 +1211,7 @@ OPCODE(POP_BC)
     }
     regs->sp += 2;
 
-    log("DEBUG: POP BC");
+    log(LDEBUG "POP BC");
     return 0;
 }
 
@@ -1097,7 +1223,7 @@ OPCODE(POP_DE)
     }
     regs->sp += 2;
 
-    log("DEBUG: POP DE");
+    log(LDEBUG "POP DE");
     return 0;
 }
 
@@ -1109,7 +1235,7 @@ OPCODE(POP_HL)
     }
     regs->sp += 2;
 
-    log("DEBUG: POP HL");
+    log(LDEBUG "POP HL");
     return 0;
 }
 
@@ -1125,7 +1251,7 @@ OPCODE(ADD_A_A)
     regs->f.c = CARRY(regs->a, regs->a);
 
     regs->a += regs->a;
-    log("DEBUG: ADD A, A");
+    log(LDEBUG "ADD A, A");
     return 0;
 }
 
@@ -1137,7 +1263,7 @@ OPCODE(ADD_A_B)
     regs->f.c = CARRY(regs->a, regs->b);
 
     regs->a += regs->b;
-    log("DEBUG: ADD A, B");
+    log(LDEBUG "ADD A, B");
     return 0;
 }
 
@@ -1149,7 +1275,7 @@ OPCODE(ADD_A_C)
     regs->f.c = CARRY(regs->a, regs->c);
 
     regs->a += regs->c;
-    log("DEBUG: ADD A, C");
+    log(LDEBUG "ADD A, C");
     return 0;
 }
 
@@ -1161,7 +1287,7 @@ OPCODE(ADD_A_D)
     regs->f.c = CARRY(regs->a, regs->d);
 
     regs->a += regs->d;
-    log("DEBUG: ADD A, D");
+    log(LDEBUG "ADD A, D");
     return 0;
 }
 
@@ -1173,7 +1299,7 @@ OPCODE(ADD_A_E)
     regs->f.c = CARRY(regs->a, regs->e);
 
     regs->a += regs->e;
-    log("DEBUG: ADD A, E");
+    log(LDEBUG "ADD A, E");
     return 0;
 }
 
@@ -1185,7 +1311,7 @@ OPCODE(ADD_A_H)
     regs->f.c = CARRY(regs->a, regs->h);
 
     regs->a += regs->h;
-    log("DEBUG: ADD A, H");
+    log(LDEBUG "ADD A, H");
     return 0;
 }
 
@@ -1197,7 +1323,7 @@ OPCODE(ADD_A_L)
     regs->f.c = CARRY(regs->a, regs->l);
 
     regs->a += regs->l;
-    log("DEBUG: ADD A, L");
+    log(LDEBUG "ADD A, L");
     return 0;
 }
 
@@ -1218,7 +1344,7 @@ OPCODE(ADD_A_HL)
     regs->f.c = CARRY(regs->a, val);
 
     regs->a += val;
-    log("DEBUG: ADD A, (HL)");
+    log(LDEBUG "ADD A, (HL)");
     return 0;
 }
 
@@ -1239,7 +1365,7 @@ OPCODE(ADD_A_n)
     regs->f.c = CARRY(regs->a, imm8);
 
     regs->a += imm8;
-    log("DEBUG: ADD A, 0x%02x", imm8);
+    log(LDEBUG "ADD A, 0x%02x", imm8);
     return 0;
 }
 
@@ -1253,7 +1379,7 @@ OPCODE(ADC_A_A)
     regs->f.c = CARRY(regs->a, regs->a + regs->f.c);
 
     regs->a += regs->a + regs->f.c;
-    log("DEBUG: ADC A, A");
+    log(LDEBUG "ADC A, A");
     return 0;
 }
 
@@ -1265,7 +1391,7 @@ OPCODE(ADC_A_B)
     regs->f.c = CARRY(regs->a, regs->b + regs->f.c);
 
     regs->a += regs->b + regs->f.c;
-    log("DEBUG: ADC A, B");
+    log(LDEBUG "ADC A, B");
     return 0;
 }
 
@@ -1277,7 +1403,7 @@ OPCODE(ADC_A_C)
     regs->f.c = CARRY(regs->a, regs->c + regs->f.c);
 
     regs->a += regs->c + regs->f.c;
-    log("DEBUG: ADC A, C");
+    log(LDEBUG "ADC A, C");
     return 0;
 }
 
@@ -1289,7 +1415,7 @@ OPCODE(ADC_A_D)
     regs->f.c = CARRY(regs->a, regs->d + regs->f.c);
 
     regs->a += regs->d + regs->f.c;
-    log("DEBUG: ADC A, D");
+    log(LDEBUG "ADC A, D");
     return 0;
 }
 
@@ -1301,7 +1427,7 @@ OPCODE(ADC_A_E)
     regs->f.c = CARRY(regs->a, regs->e + regs->f.c);
 
     regs->a += regs->e + regs->f.c;
-    log("DEBUG: ADC A, E");
+    log(LDEBUG "ADC A, E");
     return 0;
 }
 
@@ -1313,7 +1439,7 @@ OPCODE(ADC_A_H)
     regs->f.c = CARRY(regs->a, regs->h + regs->f.c);
 
     regs->a += regs->h + regs->f.c;
-    log("DEBUG: ADC A, H");
+    log(LDEBUG "ADC A, H");
     return 0;
 }
 
@@ -1325,7 +1451,7 @@ OPCODE(ADC_A_L)
     regs->f.c = CARRY(regs->a, regs->l + regs->f.c);
 
     regs->a += regs->l;
-    log("DEBUG: ADC A, L");
+    log(LDEBUG "ADC A, L");
     return 0;
 }
 
@@ -1346,7 +1472,7 @@ OPCODE(ADC_A_HL)
     regs->f.c = CARRY(regs->a, val + regs->f.c);
 
     regs->a += val + regs->f.c;
-    log("DEBUG: ADC A, (HL)");
+    log(LDEBUG "ADC A, (HL)");
     return 0;
 }
 
@@ -1367,7 +1493,7 @@ OPCODE(ADC_A_n)
     regs->f.c = CARRY(regs->a, imm8 + regs->f.c);
 
     regs->a += imm8 + regs->f.c;
-    log("DEBUG: ADC A, 0x%02x", imm8);
+    log(LDEBUG "ADC A, 0x%02x", imm8);
     return 0;
 }
 
@@ -1381,7 +1507,7 @@ OPCODE(SUB_A_A)
     regs->f.c = SUB_CARRY(regs->a, regs->a);
 
     regs->a -= regs->a;
-    log("DEBUG: SUB A, A");
+    log(LDEBUG "SUB A, A");
     return 0;
 }
 
@@ -1393,7 +1519,7 @@ OPCODE(SUB_A_B)
     regs->f.c = SUB_CARRY(regs->a, regs->b);
 
     regs->a -= regs->b;
-    log("DEBUG: SUB A, B");
+    log(LDEBUG "SUB A, B");
     return 0;
 }
 
@@ -1405,7 +1531,7 @@ OPCODE(SUB_A_C)
     regs->f.c = SUB_CARRY(regs->a, regs->c);
 
     regs->a -= regs->c;
-    log("DEBUG: SUB A, C");
+    log(LDEBUG "SUB A, C");
     return 0;
 }
 
@@ -1417,7 +1543,7 @@ OPCODE(SUB_A_D)
     regs->f.c = SUB_CARRY(regs->a, regs->d);
 
     regs->a -= regs->d;
-    log("DEBUG: SUB A, D");
+    log(LDEBUG "SUB A, D");
     return 0;
 }
 
@@ -1429,7 +1555,7 @@ OPCODE(SUB_A_E)
     regs->f.c = SUB_CARRY(regs->a, regs->e);
 
     regs->a -= regs->e;
-    log("DEBUG: SUB A, E");
+    log(LDEBUG "SUB A, E");
     return 0;
 }
 
@@ -1441,7 +1567,7 @@ OPCODE(SUB_A_H)
     regs->f.c = SUB_CARRY(regs->a, regs->h);
 
     regs->a -= regs->h;
-    log("DEBUG: SUB A, H");
+    log(LDEBUG "SUB A, H");
     return 0;
 }
 
@@ -1453,7 +1579,7 @@ OPCODE(SUB_A_L)
     regs->f.c = SUB_CARRY(regs->a, regs->l);
 
     regs->a -= regs->l;
-    log("DEBUG: SUB A, L");
+    log(LDEBUG "SUB A, L");
     return 0;
 }
 
@@ -1474,7 +1600,7 @@ OPCODE(SUB_A_HL)
     regs->f.c = SUB_CARRY(regs->a, val);
 
     regs->a -= val;
-    log("DEBUG: SUB A, (HL)");
+    log(LDEBUG "SUB A, (HL)");
     return 0;
 }
 
@@ -1495,7 +1621,7 @@ OPCODE(SUB_A_n)
     regs->f.c = SUB_CARRY(regs->a, imm8);
 
     regs->a -= imm8;
-    log("DEBUG: SUB A, 0x%02x", imm8);
+    log(LDEBUG "SUB A, 0x%02x", imm8);
     return 0;
 }
 
@@ -1509,7 +1635,7 @@ OPCODE(SBC_A_A)
     regs->f.c = SUB_CARRY(regs->a, regs->a + regs->f.c);
 
     regs->a -= regs->a + regs->f.c;
-    log("DEBUG: SBC A, A");
+    log(LDEBUG "SBC A, A");
     return 0;
 }
 
@@ -1521,7 +1647,7 @@ OPCODE(SBC_A_B)
     regs->f.c = SUB_CARRY(regs->a, regs->b + regs->f.c);
 
     regs->a -= regs->b + regs->f.c;
-    log("DEBUG: SBC A, B");
+    log(LDEBUG "SBC A, B");
     return 0;
 }
 
@@ -1533,7 +1659,7 @@ OPCODE(SBC_A_C)
     regs->f.c = SUB_CARRY(regs->a, regs->c + regs->f.c);
 
     regs->a -= regs->c + regs->f.c;
-    log("DEBUG: SBC A, C");
+    log(LDEBUG "SBC A, C");
     return 0;
 }
 
@@ -1545,7 +1671,7 @@ OPCODE(SBC_A_D)
     regs->f.c = SUB_CARRY(regs->a, regs->d + regs->f.c);
 
     regs->a -= regs->d + regs->f.c;
-    log("DEBUG: SBC A, D");
+    log(LDEBUG "SBC A, D");
     return 0;
 }
 
@@ -1557,7 +1683,7 @@ OPCODE(SBC_A_E)
     regs->f.c = SUB_CARRY(regs->a, regs->e + regs->f.c);
 
     regs->a -= regs->e + regs->f.c;
-    log("DEBUG: SBC A, E");
+    log(LDEBUG "SBC A, E");
     return 0;
 }
 
@@ -1569,7 +1695,7 @@ OPCODE(SBC_A_H)
     regs->f.c = SUB_CARRY(regs->a, regs->h + regs->f.c);
 
     regs->a -= regs->h + regs->f.c;
-    log("DEBUG: SBC A, H");
+    log(LDEBUG "SBC A, H");
     return 0;
 }
 
@@ -1581,7 +1707,7 @@ OPCODE(SBC_A_L)
     regs->f.c = SUB_CARRY(regs->a, regs->l + regs->f.c);
 
     regs->a -= regs->l + regs->f.c;
-    log("DEBUG: SBC A, L");
+    log(LDEBUG "SBC A, L");
     return 0;
 }
 
@@ -1602,7 +1728,7 @@ OPCODE(SBC_A_HL)
     regs->f.c = SUB_CARRY(regs->a, val + regs->f.c);
 
     regs->a -= val + regs->f.c;
-    log("DEBUG: SBC A, (HL)");
+    log(LDEBUG "SBC A, (HL)");
     return 0;
 }
 
@@ -1623,7 +1749,7 @@ OPCODE(SBC_A_n)
     regs->f.c = SUB_CARRY(regs->a, imm8 + regs->f.c);
 
     regs->a -= imm8 + regs->f.c;
-    log("DEBUG: SBC A, 0x%02x", imm8);
+    log(LDEBUG "SBC A, 0x%02x", imm8);
     return 0;
 }
 
@@ -1637,7 +1763,7 @@ OPCODE(AND_A_A)
     regs->f.n = 0;
     regs->f.h = 1;
     regs->f.c = 0;
-    log("DEBUG: AND A, A");
+    log(LDEBUG "AND A, A");
     return 0;
 }
 
@@ -1649,7 +1775,7 @@ OPCODE(AND_A_B)
     regs->f.n = 0;
     regs->f.h = 1;
     regs->f.c = 0;
-    log("DEBUG: AND A, B");
+    log(LDEBUG "AND A, B");
     return 0;
 }
 
@@ -1661,7 +1787,7 @@ OPCODE(AND_A_C)
     regs->f.n = 0;
     regs->f.h = 1;
     regs->f.c = 0;
-    log("DEBUG: AND A, C");
+    log(LDEBUG "AND A, C");
     return 0;
 }
 
@@ -1673,7 +1799,7 @@ OPCODE(AND_A_D)
     regs->f.n = 0;
     regs->f.h = 1;
     regs->f.c = 0;
-    log("DEBUG: AND A, D");
+    log(LDEBUG "AND A, D");
     return 0;
 }
 
@@ -1685,7 +1811,7 @@ OPCODE(AND_A_E)
     regs->f.n = 0;
     regs->f.h = 1;
     regs->f.c = 0;
-    log("DEBUG: AND A, E");
+    log(LDEBUG "AND A, E");
     return 0;
 }
 
@@ -1697,7 +1823,7 @@ OPCODE(AND_A_H)
     regs->f.n = 0;
     regs->f.h = 1;
     regs->f.c = 0;
-    log("DEBUG: AND A, H");
+    log(LDEBUG "AND A, H");
     return 0;
 }
 
@@ -1709,7 +1835,7 @@ OPCODE(AND_A_L)
     regs->f.n = 0;
     regs->f.h = 1;
     regs->f.c = 0;
-    log("DEBUG: AND A, L");
+    log(LDEBUG "AND A, L");
     return 0;
 }
 
@@ -1730,7 +1856,7 @@ OPCODE(AND_A_HL)
     regs->f.n = 0;
     regs->f.h = 1;
     regs->f.c = 0;
-    log("DEBUG: AND A, (HL)");
+    log(LDEBUG "AND A, (HL)");
     return 0;
 }
 
@@ -1751,7 +1877,7 @@ OPCODE(AND_A_n)
     regs->f.n = 0;
     regs->f.h = 1;
     regs->f.c = 0;
-    log("DEBUG: AND A, 0x%02x", imm8);
+    log(LDEBUG "AND A, 0x%02x", imm8);
     return 0;
 }
 
@@ -1765,7 +1891,7 @@ OPCODE(OR_A_A)
     regs->f.n = 0;
     regs->f.h = 0;
     regs->f.c = 0;
-    log("DEBUG: OR A, A");
+    log(LDEBUG "OR A, A");
     return 0;
 }
 
@@ -1777,7 +1903,7 @@ OPCODE(OR_A_B)
     regs->f.n = 0;
     regs->f.h = 0;
     regs->f.c = 0;
-    log("DEBUG: OR A, B");
+    log(LDEBUG "OR A, B");
     return 0;
 }
 
@@ -1789,7 +1915,7 @@ OPCODE(OR_A_C)
     regs->f.n = 0;
     regs->f.h = 0;
     regs->f.c = 0;
-    log("DEBUG: OR A, C");
+    log(LDEBUG "OR A, C");
     return 0;
 }
 
@@ -1801,7 +1927,7 @@ OPCODE(OR_A_D)
     regs->f.n = 0;
     regs->f.h = 0;
     regs->f.c = 0;
-    log("DEBUG: OR A, D");
+    log(LDEBUG "OR A, D");
     return 0;
 }
 
@@ -1813,7 +1939,7 @@ OPCODE(OR_A_E)
     regs->f.n = 0;
     regs->f.h = 0;
     regs->f.c = 0;
-    log("DEBUG: OR A, E");
+    log(LDEBUG "OR A, E");
     return 0;
 }
 
@@ -1825,7 +1951,7 @@ OPCODE(OR_A_H)
     regs->f.n = 0;
     regs->f.h = 0;
     regs->f.c = 0;
-    log("DEBUG: OR A, H");
+    log(LDEBUG "OR A, H");
     return 0;
 }
 
@@ -1837,7 +1963,7 @@ OPCODE(OR_A_L)
     regs->f.n = 0;
     regs->f.h = 0;
     regs->f.c = 0;
-    log("DEBUG: OR A, L");
+    log(LDEBUG "OR A, L");
     return 0;
 }
 
@@ -1858,7 +1984,7 @@ OPCODE(OR_A_HL)
     regs->f.n = 0;
     regs->f.h = 0;
     regs->f.c = 0;
-    log("DEBUG: OR A, (HL)");
+    log(LDEBUG "OR A, (HL)");
     return 0;
 }
 
@@ -1879,7 +2005,7 @@ OPCODE(OR_A_n)
     regs->f.n = 0;
     regs->f.h = 0;
     regs->f.c = 0;
-    log("DEBUG: OR A, 0x%02x", imm8);
+    log(LDEBUG "OR A, 0x%02x", imm8);
     return 0;
 }
 
@@ -1893,7 +2019,7 @@ OPCODE(XOR_A_A)
     regs->f.n = 0;
     regs->f.h = 0;
     regs->f.c = 0;
-    log("DEBUG: XOR A, A");
+    log(LDEBUG "XOR A, A");
     return 0;
 }
 
@@ -1905,7 +2031,7 @@ OPCODE(XOR_A_B)
     regs->f.n = 0;
     regs->f.h = 0;
     regs->f.c = 0;
-    log("DEBUG: XOR A, B");
+    log(LDEBUG "XOR A, B");
     return 0;
 }
 
@@ -1917,7 +2043,7 @@ OPCODE(XOR_A_C)
     regs->f.n = 0;
     regs->f.h = 0;
     regs->f.c = 0;
-    log("DEBUG: XOR A, C");
+    log(LDEBUG "XOR A, C");
     return 0;
 }
 
@@ -1929,7 +2055,7 @@ OPCODE(XOR_A_D)
     regs->f.n = 0;
     regs->f.h = 0;
     regs->f.c = 0;
-    log("DEBUG: XOR A, D");
+    log(LDEBUG "XOR A, D");
     return 0;
 }
 
@@ -1941,7 +2067,7 @@ OPCODE(XOR_A_E)
     regs->f.n = 0;
     regs->f.h = 0;
     regs->f.c = 0;
-    log("DEBUG: XOR A, E");
+    log(LDEBUG "XOR A, E");
     return 0;
 }
 
@@ -1953,7 +2079,7 @@ OPCODE(XOR_A_H)
     regs->f.n = 0;
     regs->f.h = 0;
     regs->f.c = 0;
-    log("DEBUG: XOR A, H");
+    log(LDEBUG "XOR A, H");
     return 0;
 }
 
@@ -1965,7 +2091,7 @@ OPCODE(XOR_A_L)
     regs->f.n = 0;
     regs->f.h = 0;
     regs->f.c = 0;
-    log("DEBUG: XOR A, L");
+    log(LDEBUG "XOR A, L");
     return 0;
 }
 
@@ -1986,7 +2112,7 @@ OPCODE(XOR_A_HL)
     regs->f.n = 0;
     regs->f.h = 0;
     regs->f.c = 0;
-    log("DEBUG: XOR A, (HL)");
+    log(LDEBUG "XOR A, (HL)");
     return 0;
 }
 
@@ -2007,7 +2133,7 @@ OPCODE(XOR_A_n)
     regs->f.n = 0;
     regs->f.h = 0;
     regs->f.c = 0;
-    log("DEBUG: XOR A, 0x%02x", imm8);
+    log(LDEBUG "XOR A, 0x%02x", imm8);
     return 0;
 }
 
@@ -2020,7 +2146,7 @@ OPCODE(CP_A_A)
     regs->f.h = SUB_HALF_CARRY(regs->a, regs->a);
     regs->f.c = SUB_CARRY(regs->a, regs->a);
 
-    log("DEBUG: CP A, A");
+    log(LDEBUG "CP A, A");
     return 0;
 }
 
@@ -2031,7 +2157,7 @@ OPCODE(CP_A_B)
     regs->f.h = SUB_HALF_CARRY(regs->a, regs->b);
     regs->f.c = SUB_CARRY(regs->a, regs->b);
 
-    log("DEBUG: CP A, B");
+    log(LDEBUG "CP A, B");
     return 0;
 }
 
@@ -2042,7 +2168,7 @@ OPCODE(CP_A_C)
     regs->f.h = SUB_HALF_CARRY(regs->a, regs->c);
     regs->f.c = SUB_CARRY(regs->a, regs->c);
 
-    log("DEBUG: CP A, C");
+    log(LDEBUG "CP A, C");
     return 0;
 }
 
@@ -2053,7 +2179,7 @@ OPCODE(CP_A_D)
     regs->f.h = SUB_HALF_CARRY(regs->a, regs->d);
     regs->f.c = SUB_CARRY(regs->a, regs->d);
 
-    log("DEBUG: CP A, D");
+    log(LDEBUG "CP A, D");
     return 0;
 }
 
@@ -2064,7 +2190,7 @@ OPCODE(CP_A_E)
     regs->f.h = SUB_HALF_CARRY(regs->a, regs->e);
     regs->f.c = SUB_CARRY(regs->a, regs->e);
 
-    log("DEBUG: CP A, E");
+    log(LDEBUG "CP A, E");
     return 0;
 }
 
@@ -2075,7 +2201,7 @@ OPCODE(CP_A_H)
     regs->f.h = SUB_HALF_CARRY(regs->a, regs->h);
     regs->f.c = SUB_CARRY(regs->a, regs->h);
 
-    log("DEBUG: CP A, H");
+    log(LDEBUG "CP A, H");
     return 0;
 }
 
@@ -2086,7 +2212,7 @@ OPCODE(CP_A_L)
     regs->f.h = SUB_HALF_CARRY(regs->a, regs->l);
     regs->f.c = SUB_CARRY(regs->a, regs->l);
 
-    log("DEBUG: CP A, L");
+    log(LDEBUG "CP A, L");
     return 0;
 }
 
@@ -2106,7 +2232,7 @@ OPCODE(CP_A_HL)
     regs->f.h = SUB_HALF_CARRY(regs->a, val);
     regs->f.c = SUB_CARRY(regs->a, val);
 
-    log("DEBUG: CP A, (HL)");
+    log(LDEBUG "CP A, (HL)");
     return 0;
 }
 
@@ -2126,7 +2252,7 @@ OPCODE(CP_A_n)
     regs->f.h = SUB_HALF_CARRY(regs->a, imm8);
     regs->f.c = SUB_CARRY(regs->a, imm8);
 
-    log("DEBUG: CP A, 0x%02x", imm8);
+    log(LDEBUG "CP A, 0x%02x", imm8);
     return 0;
 }
 
@@ -2139,7 +2265,7 @@ OPCODE(INC_A)
     regs->f.h = HALF_CARRY(regs->a, 1);
 
     regs->a++;
-    log("DEBUG: INC A");
+    log(LDEBUG "INC A");
     return 0;
 }
 
@@ -2150,7 +2276,7 @@ OPCODE(INC_B)
     regs->f.h = HALF_CARRY(regs->b, 1);
 
     regs->b++;
-    log("DEBUG: INC B");
+    log(LDEBUG "INC B");
     return 0;
 }
 
@@ -2161,7 +2287,7 @@ OPCODE(INC_C)
     regs->f.h = HALF_CARRY(regs->c, 1);
 
     regs->c++;
-    log("DEBUG: INC C");
+    log(LDEBUG "INC C");
     return 0;
 }
 
@@ -2172,7 +2298,7 @@ OPCODE(INC_D)
     regs->f.h = HALF_CARRY(regs->d, 1);
 
     regs->d++;
-    log("DEBUG: INC D");
+    log(LDEBUG "INC D");
     return 0;
 }
 
@@ -2183,7 +2309,7 @@ OPCODE(INC_E)
     regs->f.h = HALF_CARRY(regs->e, 1);
 
     regs->e++;
-    log("DEBUG: INC E");
+    log(LDEBUG "INC E");
     return 0;
 }
 
@@ -2194,7 +2320,7 @@ OPCODE(INC_H)
     regs->f.h = HALF_CARRY(regs->h, 1);
 
     regs->h++;
-    log("DEBUG: INC H");
+    log(LDEBUG "INC H");
     return 0;
 }
 
@@ -2205,7 +2331,7 @@ OPCODE(INC_L)
     regs->f.h = HALF_CARRY(regs->l, 1);
 
     regs->l++;
-    log("DEBUG: INC L");
+    log(LDEBUG "INC L");
     return 0;
 }
 
@@ -2230,7 +2356,7 @@ OPCODE(INC_HL)
     {
         return -1;
     }
-    log("DEBUG: INC (HL)");
+    log(LDEBUG "INC (HL)");
     return 0;
 }
 
@@ -2243,7 +2369,7 @@ OPCODE(DEC_A)
     regs->f.h = SUB_HALF_CARRY(regs->a, 1);
 
     regs->a--;
-    log("DEBUG: DEC A");
+    log(LDEBUG "DEC A");
     return 0;
 }
 
@@ -2254,7 +2380,7 @@ OPCODE(DEC_B)
     regs->f.h = SUB_HALF_CARRY(regs->b, 1);
 
     regs->b--;
-    log("DEBUG: DEC B");
+    log(LDEBUG "DEC B");
     return 0;
 }
 
@@ -2265,7 +2391,7 @@ OPCODE(DEC_C)
     regs->f.h = SUB_HALF_CARRY(regs->c, 1);
 
     regs->c--;
-    log("DEBUG: DEC C");
+    log(LDEBUG "DEC C");
     return 0;
 }
 
@@ -2276,7 +2402,7 @@ OPCODE(DEC_D)
     regs->f.h = SUB_HALF_CARRY(regs->d, 1);
 
     regs->d--;
-    log("DEBUG: DEC D");
+    log(LDEBUG "DEC D");
     return 0;
 }
 
@@ -2287,7 +2413,7 @@ OPCODE(DEC_E)
     regs->f.h = SUB_HALF_CARRY(regs->e, 1);
 
     regs->e--;
-    log("DEBUG: DEC E");
+    log(LDEBUG "DEC E");
     return 0;
 }
 
@@ -2298,7 +2424,7 @@ OPCODE(DEC_H)
     regs->f.h = SUB_HALF_CARRY(regs->h, 1);
 
     regs->h--;
-    log("DEBUG: DEC H");
+    log(LDEBUG "DEC H");
     return 0;
 }
 
@@ -2309,7 +2435,7 @@ OPCODE(DEC_L)
     regs->f.h = SUB_HALF_CARRY(regs->l, 1);
 
     regs->l--;
-    log("DEBUG: DEC L");
+    log(LDEBUG "DEC L");
     return 0;
 }
 
@@ -2334,7 +2460,7 @@ OPCODE(DEC_HL)
     {
         return -1;
     }
-    log("DEBUG: DEC (HL)");
+    log(LDEBUG "DEC (HL)");
     return 0;
 }
 
@@ -2347,7 +2473,7 @@ OPCODE(ADD_HL_BC)
     regs->f.c = CARRY(regs->hl, regs->bc);
 
     regs->hl += regs->bc;
-    log("DEBUG: ADD HL, BC");
+    log(LDEBUG "ADD HL, BC");
     return 0;
 }
 
@@ -2358,7 +2484,7 @@ OPCODE(ADD_HL_DE)
     regs->f.c = CARRY(regs->hl, regs->de);
 
     regs->hl += regs->de;
-    log("DEBUG: ADD HL, DE");
+    log(LDEBUG "ADD HL, DE");
     return 0;
 }
 
@@ -2369,7 +2495,7 @@ OPCODE(ADD_HL_HL)
     regs->f.c = CARRY(regs->hl, regs->hl);
 
     regs->hl += regs->hl;
-    log("DEBUG: ADD HL, HL");
+    log(LDEBUG "ADD HL, HL");
     return 0;
 }
 
@@ -2380,7 +2506,7 @@ OPCODE(ADD_HL_SP)
     regs->f.c = CARRY(regs->hl, regs->sp);
 
     regs->hl += regs->sp;
-    log("DEBUG: ADD HL, SP");
+    log(LDEBUG "ADD HL, SP");
     return 0;
 }
 
@@ -2401,7 +2527,7 @@ OPCODE(ADD_SP_n)
     regs->f.c = CARRY(regs->sp, imm8);
 
     regs->sp += imm8;
-    log("DEBUG: ADD SP, 0x%02x", imm8);
+    log(LDEBUG "ADD SP, 0x%02x", imm8);
     return 0;
 }
 
@@ -2410,28 +2536,28 @@ OPCODE(ADD_SP_n)
 OPCODE(INC_BC)
 {
     regs->bc++;
-    log("DEBUG: INC BC");
+    log(LDEBUG "INC BC");
     return 0;
 }
 
 OPCODE(INC_DE)
 {
     regs->de++;
-    log("DEBUG: INC DE");
+    log(LDEBUG "INC DE");
     return 0;
 }
 
 OPCODE(INC_HL_2)
 {
     regs->hl++;
-    log("DEBUG: INC HL");
+    log(LDEBUG "INC HL");
     return 0;
 }
 
 OPCODE(INC_SP)
 {
     regs->sp++;
-    log("DEBUG: INC SP");
+    log(LDEBUG "INC SP");
     return 0;
 }
 
@@ -2440,28 +2566,28 @@ OPCODE(INC_SP)
 OPCODE(DEC_BC)
 {
     regs->bc--;
-    log("DEBUG: DEC BC");
+    log(LDEBUG "DEC BC");
     return 0;
 }
 
 OPCODE(DEC_DE)
 {
     regs->de--;
-    log("DEBUG: DEC DE");
+    log(LDEBUG "DEC DE");
     return 0;
 }
 
 OPCODE(DEC_HL_2)
 {
     regs->hl--;
-    log("DEBUG: DEC HL");
+    log(LDEBUG "DEC HL");
     return 0;
 }
 
 OPCODE(DEC_SP)
 {
     regs->sp--;
-    log("DEBUG: DEC SP");
+    log(LDEBUG "DEC SP");
     return 0;
 }
 
@@ -2469,6 +2595,13 @@ void register_opcodes()
 {
     /* ----------- Misc. ----------- */
     ADD_OPCODE(0x00, 1, 1, NOP);
+    ADD_OPCODE(0xCB, 2, 8, CB); // This needs to be fixed: there are CB opcodes that require more than 8 cycles.
+    ADD_OPCODE(0x27, 1, 4, DAA);
+    ADD_OPCODE(0x2F, 1, 4, CPL);
+    ADD_OPCODE(0x3F, 1, 4, CCF);
+    ADD_OPCODE(0x37, 1, 4, SCF);
+    ADD_OPCODE(0x76, 1, 4, HALT);
+    ADD_OPCODE(0x10, 2, 4, STOP);
 
     /* -------- 8-Bit Loads -------- */
     // LD reg8, imm8
