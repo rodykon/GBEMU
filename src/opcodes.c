@@ -3,6 +3,7 @@
 #include "log.h"
 #include "mem_utils.h"
 
+struct opcode opcodes[NUM_OPCODES];
 
 /* ----------- Utils ----------- */
 

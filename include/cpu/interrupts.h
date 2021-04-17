@@ -28,13 +28,13 @@ struct irq_register
 };
 
 // Interrupt Master Enable flag
-uint8_t ime;
+extern uint8_t ime;
 
 // Interrupt Flags
-struct irq_register if_flags;
+extern struct irq_register if_flags;
 
 // Interrupt Enable
-struct irq_register ie_flags;
+extern struct irq_register ie_flags;
 
 // Bus handlers
 int irq_if_read(uint8_t *result, uint16_t addr);

@@ -1,4 +1,5 @@
 #include "mem_utils.h"
+#include "bus.h"
 
 int read_word(uint16_t *out, uint16_t address)
 {
