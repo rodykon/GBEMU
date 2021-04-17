@@ -235,12 +235,16 @@ def ni(dbg: Debugger, args: List[str]):
 @command_handler
 def r(dbg: Debugger, args: List[str]):
     """
-    Print the value of a register.
+    Print the value of registers.
     """
-    if len(args) != 2 or args[1] not in REGS:
-        raise InvalidArgumentsError()
-    
-    print("{} = 0x{:04X}".format(args[1], dbg.instructions[dbg.current].regs[args[1]]))
+    if len(args) == 1:
+        regs = REGS
+    else:
+        regs = args[1:]
+
+    for reg in regs:
+        if reg in REGS:
+            print("{} = 0x{:04X}".format(reg, dbg.instructions[dbg.current].regs[reg]))
     return False
 
 @command_handler
