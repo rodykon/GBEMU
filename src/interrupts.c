@@ -115,11 +115,11 @@ int handle_interrups(uint8_t *cycles)
             // Make sure state is set to normal.
             cpu.state = STATE_NORMAL;
         }
-        else if (cpu.state == STATE_HALT && (*(uint8_t*)&cpu.if_flags & *(uint8_t*)&cpu.ie_flags & 0x1F))
-        {
-            cpu.state = STATE_NORMAL;
-            *cycles = 4;
-        }
+    }
+    else if (cpu.state == STATE_HALT && (*(uint8_t*)&cpu.if_flags & *(uint8_t*)&cpu.ie_flags & 0x1F))
+    {
+        cpu.state = STATE_NORMAL;
+        *cycles = 4;
     }
     return 0;
 }
