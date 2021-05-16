@@ -165,6 +165,16 @@ OPCODE(STOP)
     return 0;
 }
 
+OPCODE(DI)
+{
+    *disable_irq++;
+}
+
+OPCODE(EI)
+{
+    *enable_irq++;
+}
+
 /* -------- 8-Bit Loads -------- */
 
 // LD reg8, imm8
@@ -2601,6 +2611,8 @@ void register_opcodes()
     ADD_OPCODE(0x37, 1, 4, SCF);
     ADD_OPCODE(0x76, 1, 4, HALT);
     ADD_OPCODE(0x10, 2, 4, STOP);
+    ADD_OPCODE(0xF3, 1, 4, DI);
+    ADD_OPCODE(0xFB, 1, 4, EI);
 
     /* -------- 8-Bit Loads -------- */
     // LD reg8, imm8

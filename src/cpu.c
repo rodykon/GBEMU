@@ -25,7 +25,7 @@ static inline int cpu_init()
 void cpu_loop()
 {
     struct opcode *opcode;
-    uint8_t current_opcode, cycles = 0;
+    uint8_t current_opcode, cycles = 0, disable_irq = 0, enable_irq = 0;
     
     cpu_init();
 
@@ -33,7 +33,7 @@ void cpu_loop()
     {
         if (cycles == 0)
         {
-            if (handle_interrups(&cycles))
+            if (handle_interrups(&cycles, &enable_irq, &disable_irq))
             {
                 goto end;
             }
@@ -44,7 +44,7 @@ void cpu_loop()
                 if (bus_read(&current_opcode, cpu.regs.pc))
                 {
                     log("ERROR: Failed to read opcode!");
-                    return;
+                    goto end;
                 }
 
                 // Extract from opcode table (decode)
@@ -52,10 +52,10 @@ void cpu_loop()
 
                 // Call opcode handler (execute)
                 log_registers(&cpu.regs);
-                if (opcode->func(&cpu.regs, &cpu.state))
+                if (opcode->func(&cpu.regs, &cpu.state, &enable_irq, &disable_irq))
                 {
                     log("ERROR: Opcode handler failed!");
-                    return;
+                    goto end;
                 }
 
                 cycles = opcode->cycles;

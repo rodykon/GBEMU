@@ -84,9 +84,42 @@ static uint8_t get_set_interrupt_no()
     return 0xFF;
 }
 
-int handle_interrups(uint8_t *cycles)
+// Handle the conditions in which IME is set or reset, this is not trivial since we want to
+// change IME after the instruction FOLLOWING IE or ID was executed.
+static inline void set_ime(uint8_t *enable_irq, uint8_t *disable_irq)
+{
+    if (*enable_irq)
+    {
+        if (*enable_irq >= 2)
+        {
+            cpu.ime = 1;
+            *enable_irq = 0;
+        }
+        else
+        {
+            *enable_irq++;
+        }
+    }
+
+    if (*disable_irq)
+    {
+        if (*disable_irq >=2)
+        {
+            cpu.ime = 0;
+            *disable_irq = 0;
+        }
+        else
+        {
+            *disable_irq++;
+        }
+    }
+}
+
+int handle_interrups(uint8_t *cycles, uint8_t *enable_irq, uint8_t *disable_irq)
 {
     uint16_t irq_no = 0xFF;
+
+    set_ime(enable_irq, disable_irq);
 
     if (cpu.ime)
     {

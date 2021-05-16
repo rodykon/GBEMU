@@ -6,7 +6,7 @@
 
 #define NUM_OPCODES 0x100
  
-typedef int(*opcode_func_t)(struct registers *regs, enum cpu_state *state);
+typedef int(*opcode_func_t)(struct registers *regs, enum cpu_state *state, uint8_t *enable_irq, uint8_t *disable_irq);
  
 struct opcode {
     opcode_func_t func;
@@ -16,7 +16,7 @@ struct opcode {
 
 extern struct opcode opcodes[NUM_OPCODES];
 
-#define OPCODE(name) int name(struct registers *regs, enum cpu_state *state)
+#define OPCODE(name) int name(struct registers *regs, enum cpu_state *state, uint8_t *enable_irq, uint8_t *disable_irq)
 #define ADD_OPCODE(_opcode, _size, _cycles, _func) do { \
                                                    opcodes[_opcode].func = _func; \
                                                    opcodes[_opcode].size = _size; \

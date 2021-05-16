@@ -35,6 +35,6 @@ int irq_ie_write(uint8_t val, uint16_t addr);
 int irq_init();
 int irq_end();
 
-int handle_interrups(uint8_t *cycles);
+int handle_interrups(uint8_t *cycles, uint8_t *enable_irq, uint8_t *disable_irq);
 
 #endif
