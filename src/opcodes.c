@@ -52,7 +52,7 @@ OPCODE(NOP)
 
 OPCODE(CB)
 {
-    uint8_t type;
+    uint8_t type, value;
 
     if (bus_read(&type, regs->pc + 1))
     {
@@ -90,7 +90,6 @@ OPCODE(CB)
             log(LDEBUG "SWAP L");
             break;
         case 0x36:
-            uint8_t value;
             if (bus_read(&value, regs->hl) | bus_write(swap(value, regs), regs->hl))
             {
                 return -1;

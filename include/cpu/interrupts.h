@@ -1,9 +1,8 @@
 #ifndef INTERRUPTS__
-#define INTERRUPTS
+#define INTERRUPTS__
 
 #include <inttypes.h>
 #include "cpu/registers.h"
-#include "cpu/cpu.h"
 
 #define NUM_INTERRUPTS 5
 
@@ -27,15 +26,6 @@ struct irq_register
     uint8_t unused : 3;
 };
 
-// Interrupt Master Enable flag
-extern uint8_t ime;
-
-// Interrupt Flags
-extern struct irq_register if_flags;
-
-// Interrupt Enable
-extern struct irq_register ie_flags;
-
 // Bus handlers
 int irq_if_read(uint8_t *result, uint16_t addr);
 int irq_if_write(uint8_t val, uint16_t addr);
@@ -45,6 +35,6 @@ int irq_ie_write(uint8_t val, uint16_t addr);
 int irq_init();
 int irq_end();
 
-int handle_interrups(struct registers *regs, enum cpu_state *state, uint8_t *cycles);
+int handle_interrups(uint8_t *cycles);
 
 #endif
