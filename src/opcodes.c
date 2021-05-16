@@ -168,11 +168,73 @@ OPCODE(STOP)
 OPCODE(DI)
 {
     *disable_irq++;
+    log(LDEBUG "DI");
+    return 0;
 }
 
 OPCODE(EI)
 {
     *enable_irq++;
+    log(LDEBUG "EI");
+    return 0;
+}
+
+OPCODE(RLCA)
+{
+    regs->f.n = 0;
+    regs->f.h = 0;
+    regs->f.c = regs->a >> 7;
+
+    regs->a = (regs->a << 1) | (regs->a >> 7);
+
+    regs->f.z = regs->a == 0 ? 1 : 0;
+
+    log(LDEBUG "RLCA");
+    return 0; 
+}
+
+OPCODE(RLA)
+{
+    uint8_t new_c = regs->a >> 7;
+
+    regs->f.n = 0;
+    regs->f.h = 0;
+    regs->a = (regs->a << 1) | regs->f.c;
+    regs->c = new_c & 1;
+
+    regs->f.z = regs->a == 0 ? 1 : 0;
+
+    log(LDEBUG "RLA");
+    return 0; 
+}
+
+OPCODE(RRCA)
+{
+    regs->f.n = 0;
+    regs->f.h = 0;
+    regs->f.c = regs->a & 1;
+
+    regs->a = (regs->a >> 1) | (regs->a << 7);
+
+    regs->f.z = regs->a == 0 ? 1 : 0;
+
+    log(LDEBUG "RRCA");
+    return 0; 
+}
+
+OPCODE(RRA)
+{
+    uint8_t new_c = regs->a & 1;
+
+    regs->f.n = 0;
+    regs->f.h = 0;
+    regs->a = (regs->a >> 1) | (regs->f.c << 7);
+    regs->c = new_c & 1;
+
+    regs->f.z = regs->a == 0 ? 1 : 0;
+
+    log(LDEBUG "RRA");
+    return 0; 
 }
 
 /* -------- 8-Bit Loads -------- */
@@ -2613,6 +2675,8 @@ void register_opcodes()
     ADD_OPCODE(0x10, 2, 4, STOP);
     ADD_OPCODE(0xF3, 1, 4, DI);
     ADD_OPCODE(0xFB, 1, 4, EI);
+    ADD_OPCODE(0x07, 1, 4, RLCA);
+    ADD_OPCODE(0x17, 1, 4, RLA);
 
     /* -------- 8-Bit Loads -------- */
     // LD reg8, imm8
