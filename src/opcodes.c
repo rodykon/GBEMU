@@ -3,7 +3,7 @@
 #include "log.h"
 #include "mem_utils.h"
 
-struct opcode opcodes[NUM_OPCODES];
+struct opcode opcodes[NUM_OPCODES] = {INVAL};
 
 /* ----------- Utils ----------- */
 
@@ -175,6 +175,12 @@ static int reset_bit(struct registers *regs, uint8_t *to_set)
 }
 
 /* ----------- Misc. ----------- */
+
+OPCODE(INVAL)
+{
+    log(LERR "Invalid opcode.");
+    return -1;
+}
 
 OPCODE(NOP)
 {
@@ -3711,6 +3717,225 @@ OPCODE(CALL_C)
     return 0;
 }
 
+/* ----------- Restarts --------- */
+
+OPCODE(RST_00)
+{
+    regs->sp -= 2;
+    if (write_word(regs->pc, regs->sp))
+    {
+        return -1;
+    }
+
+    regs->pc = 0x0000;
+    log(LDEBUG "RST $00");
+    return 0;
+}
+
+OPCODE(RST_08)
+{
+    regs->sp -= 2;
+    if (write_word(regs->pc, regs->sp))
+    {
+        return -1;
+    }
+
+    regs->pc = 0x0008;
+    log(LDEBUG "RST $08");
+    return 0;
+}
+
+OPCODE(RST_10)
+{
+    regs->sp -= 2;
+    if (write_word(regs->pc, regs->sp))
+    {
+        return -1;
+    }
+
+    regs->pc = 0x0010;
+    log(LDEBUG "RST $10");
+    return 0;
+}
+
+OPCODE(RST_18)
+{
+    regs->sp -= 2;
+    if (write_word(regs->pc, regs->sp))
+    {
+        return -1;
+    }
+
+    regs->pc = 0x0018;
+    log(LDEBUG "RST $18");
+    return 0;
+}
+
+OPCODE(RST_20)
+{
+    regs->sp -= 2;
+    if (write_word(regs->pc, regs->sp))
+    {
+        return -1;
+    }
+
+    regs->pc = 0x0020;
+    log(LDEBUG "RST $20");
+    return 0;
+}
+
+OPCODE(RST_28)
+{
+    regs->sp -= 2;
+    if (write_word(regs->pc, regs->sp))
+    {
+        return -1;
+    }
+
+    regs->pc = 0x0028;
+    log(LDEBUG "RST $28");
+    return 0;
+}
+
+OPCODE(RST_30)
+{
+    regs->sp -= 2;
+    if (write_word(regs->pc, regs->sp))
+    {
+        return -1;
+    }
+
+    regs->pc = 0x0030;
+    log(LDEBUG "RST $30");
+    return 0;
+}
+
+OPCODE(RST_38)
+{
+    regs->sp -= 2;
+    if (write_word(regs->pc, regs->sp))
+    {
+        return -1;
+    }
+
+    regs->pc = 0x0038;
+    log(LDEBUG "RST $38");
+    return 0;
+}
+
+/* ------------ Returns --------- */
+
+OPCODE(RET)
+{
+    uint16_t address;
+
+    if (read_word(&address, regs->sp))
+    {
+        return -1;
+    }
+    regs->sp += 2;
+
+    regs->pc = address;
+    log(LDEBUG "RET");
+    return 0;
+}
+
+OPCODE(RET_NZ)
+{
+    uint16_t address;
+    log(LDEBUG "RET NZ");
+
+    if (regs->f.z)
+    {
+        return 0;
+    }
+
+    if (read_word(&address, regs->sp))
+    {
+        return -1;
+    }
+    regs->sp += 2;
+
+    regs->pc = address;
+    return 0;
+}
+
+OPCODE(RET_Z)
+{
+    uint16_t address;
+    log(LDEBUG "RET Z");
+
+    if (!regs->f.z)
+    {
+        return 0;
+    }
+    
+    if (read_word(&address, regs->sp))
+    {
+        return -1;
+    }
+    regs->sp += 2;
+
+    regs->pc = address;
+    return 0;
+}
+
+OPCODE(RET_NC)
+{
+    uint16_t address;
+    log(LDEBUG "RET NC");
+
+    if (regs->f.c)
+    {
+        return 0;
+    }
+    
+    if (read_word(&address, regs->sp))
+    {
+        return -1;
+    }
+    regs->sp += 2;
+
+    regs->pc = address;
+    return 0;
+}
+
+OPCODE(RET_C)
+{
+    uint16_t address;
+    log(LDEBUG "RET C");
+
+    if (!regs->f.c)
+    {
+        return 0;
+    }
+    
+    if (read_word(&address, regs->sp))
+    {
+        return -1;
+    }
+    regs->sp += 2;
+
+    regs->pc = address;
+    return 0;
+}
+
+OPCODE(RETI)
+{
+    uint16_t address;
+
+    if (read_word(&address, regs->sp))
+    {
+        return -1;
+    }
+    regs->sp += 2;
+
+    regs->pc = address;
+    *enable_irq = 2;
+    log(LDEBUG "RETI");
+    return 0;
+}
+
 void register_opcodes()
 {
     /* ----------- Misc. ----------- */
@@ -4072,4 +4297,26 @@ void register_opcodes()
     ADD_OPCODE(0xCC, 3, 12, CALL_Z);
     ADD_OPCODE(0xD4, 3, 12, CALL_NC);
     ADD_OPCODE(0xDC, 3, 12, CALL_C);
+
+    /* ----------- Restarts --------- */
+
+    ADD_OPCODE(0xC7, 1, 32, RST_00);
+    ADD_OPCODE(0xCF, 1, 32, RST_08);
+    ADD_OPCODE(0xD7, 1, 32, RST_10);
+    ADD_OPCODE(0xDF, 1, 32, RST_18);
+    ADD_OPCODE(0xE7, 1, 32, RST_20);
+    ADD_OPCODE(0xEF, 1, 32, RST_28);
+    ADD_OPCODE(0xF7, 1, 32, RST_30);
+    ADD_OPCODE(0xFF, 1, 32, RST_38);
+
+    /* ------------ Returns --------- */
+
+    ADD_OPCODE(0xC9, 1, 8, RET);
+
+    ADD_OPCODE(0xC0, 1, 8, RET_NZ);
+    ADD_OPCODE(0xC8, 1, 8, RET_Z);
+    ADD_OPCODE(0xD0, 1, 8, RET_NC);
+    ADD_OPCODE(0xD8, 1, 8, RET_C);
+
+    ADD_OPCODE(0xD9, 1, 8, RETI);
 }
