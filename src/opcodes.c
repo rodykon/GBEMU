@@ -3542,6 +3542,175 @@ OPCODE(JR_C)
     return 0;
 }
 
+/* ------------- Calls ---------- */
+
+OPCODE(CALL)
+{
+    uint16_t address;
+
+    regs->sp -= 2;
+    if (write_word(regs->pc + 3, regs->sp))
+    {
+        return -1;
+    }
+
+    if (read_word(&address, regs->pc + 1))
+    {
+        return -1;
+    }
+    regs->pc = address;
+    log(LDEBUG "CALL 0x%04x", address);
+    return 0;
+}
+
+OPCODE(CALL_NZ)
+{
+    uint16_t address;
+
+#ifdef DEBUG
+
+    if (read_word(&address, regs->pc + 1))
+    {
+        return -1;
+    }
+    log(LDEBUG "CALL NZ 0x%04x", address);
+
+    if (regs->f.z)
+    {
+        return 0;
+    }
+#else
+    if (regs->f.z)
+    {
+        return 0;
+    }
+
+    if (read_word(&address, regs->pc + 1))
+    {
+        return -1;
+    }
+#endif
+    regs->sp -= 2;
+    if (write_word(regs->pc + 3, regs->sp))
+    {
+        return -1;
+    }
+
+    regs->pc = address;
+    return 0;
+}
+
+OPCODE(CALL_Z)
+{
+    uint16_t address;
+
+#ifdef DEBUG
+
+    if (read_word(&address, regs->pc + 1))
+    {
+        return -1;
+    }
+    log(LDEBUG "CALL Z 0x%04x", address);
+
+    if (!regs->f.z)
+    {
+        return 0;
+    }
+#else
+    if (!regs->f.z)
+    {
+        return 0;
+    }
+
+    if (read_word(&address, regs->pc + 1))
+    {
+        return -1;
+    }
+#endif
+    regs->sp -= 2;
+    if (write_word(regs->pc + 3, regs->sp))
+    {
+        return -1;
+    }
+
+    regs->pc = address;
+    return 0;
+}
+
+OPCODE(CALL_NC)
+{
+    uint16_t address;
+
+#ifdef DEBUG
+
+    if (read_word(&address, regs->pc + 1))
+    {
+        return -1;
+    }
+    log(LDEBUG "CALL NC 0x%04x", address);
+
+    if (regs->f.c)
+    {
+        return 0;
+    }
+#else
+    if (regs->f.c)
+    {
+        return 0;
+    }
+
+    if (read_word(&address, regs->pc + 1))
+    {
+        return -1;
+    }
+#endif
+    regs->sp -= 2;
+    if (write_word(regs->pc + 3, regs->sp))
+    {
+        return -1;
+    }
+
+    regs->pc = address;
+    return 0;
+}
+
+OPCODE(CALL_C)
+{
+    uint16_t address;
+
+#ifdef DEBUG
+
+    if (read_word(&address, regs->pc + 1))
+    {
+        return -1;
+    }
+    log(LDEBUG "CALL C 0x%04x", address);
+
+    if (!regs->f.c)
+    {
+        return 0;
+    }
+#else
+    if (!regs->f.c)
+    {
+        return 0;
+    }
+
+    if (read_word(&address, regs->pc + 1))
+    {
+        return -1;
+    }
+#endif
+    regs->sp -= 2;
+    if (write_word(regs->pc + 3, regs->sp))
+    {
+        return -1;
+    }
+
+    regs->pc = address;
+    return 0;
+}
+
 void register_opcodes()
 {
     /* ----------- Misc. ----------- */
@@ -3894,4 +4063,13 @@ void register_opcodes()
     ADD_OPCODE(0x28, 2, 8, JR_Z);
     ADD_OPCODE(0x30, 2, 8, JR_NC);
     ADD_OPCODE(0x38, 2, 8, JR_C);
+
+    /* ------------- Calls ---------- */
+
+    ADD_OPCODE(0xCD, 3, 12, CALL);
+
+    ADD_OPCODE(0xC4, 3, 12, CALL_NZ);
+    ADD_OPCODE(0xCC, 3, 12, CALL_Z);
+    ADD_OPCODE(0xD4, 3, 12, CALL_NC);
+    ADD_OPCODE(0xDC, 3, 12, CALL_C);
 }
