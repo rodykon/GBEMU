@@ -3241,6 +3241,307 @@ OPCODE(DEC_SP)
     return 0;
 }
 
+/* ------------- Jumps ---------- */
+
+OPCODE(JP)
+{
+    uint16_t addr;
+
+    if (read_word(&addr, regs->pc + 1))
+    {
+        return -1;
+    }
+
+    regs->pc = addr;
+
+    log(LDEBUG "JP 0x%04x", addr);
+    return 0;
+}
+
+OPCODE(JP_NZ)
+{
+    uint16_t addr;
+
+#ifdef DEBUG
+    if (read_word(&addr, regs->pc + 1))
+    {
+        return -1;
+    }
+
+    log(LDEBUG "JP NZ 0x%04x", addr);
+
+    if (regs->f.z)
+    {
+        return 0;
+    }
+#else
+    if (regs->f.z) // It's more efficient to check the condition first.
+    {
+        return 0;
+    }
+
+    if (read_word(&addr, regs->pc + 1))
+    {
+        return -1;
+    }
+#endif
+
+    regs->pc = addr;
+    return 0;
+}
+
+OPCODE(JP_Z)
+{
+    uint16_t addr;
+
+#ifdef DEBUG
+    if (read_word(&addr, regs->pc + 1))
+    {
+        return -1;
+    }
+
+    log(LDEBUG "JP Z 0x%04x", addr);
+
+    if (!regs->f.z)
+    {
+        return 0;
+    }
+#else
+    if (!regs->f.z) // It's more efficient to check the condition first.
+    {
+        return 0;
+    }
+
+    if (read_word(&addr, regs->pc + 1))
+    {
+        return -1;
+    }
+#endif
+
+    regs->pc = addr;
+    return 0;
+}
+
+OPCODE(JP_NC)
+{
+    uint16_t addr;
+
+#ifdef DEBUG
+    if (read_word(&addr, regs->pc + 1))
+    {
+        return -1;
+    }
+
+    log(LDEBUG "JP NC 0x%04x", addr);
+
+    if (regs->f.c)
+    {
+        return 0;
+    }
+#else
+    if (regs->f.c) // It's more efficient to check the condition first.
+    {
+        return 0;
+    }
+
+    if (read_word(&addr, regs->pc + 1))
+    {
+        return -1;
+    }
+#endif
+
+    regs->pc = addr;
+    return 0;
+}
+
+OPCODE(JP_C)
+{
+    uint16_t addr;
+
+#ifdef DEBUG
+    if (read_word(&addr, regs->pc + 1))
+    {
+        return -1;
+    }
+
+    log(LDEBUG "JP C 0x%04x", addr);
+
+    if (!regs->f.c)
+    {
+        return 0;
+    }
+#else
+    if (!regs->f.c) // It's more efficient to check the condition first.
+    {
+        return 0;
+    }
+
+    if (read_word(&addr, regs->pc + 1))
+    {
+        return -1;
+    }
+#endif
+
+    regs->pc = addr;
+    return 0;
+}
+
+OPCODE(JP_HL)
+{
+    uint16_t address;
+
+    if (read_word(&address, regs->hl))
+    {
+        return -1;
+    }
+
+    regs->pc = address;
+    log(LDEBUG "JP (HL)");
+    return 0;
+}
+
+OPCODE(JR)
+{
+    uint8_t offset;
+
+    if (bus_read(&offset, regs->pc + 1))
+    {
+        return -1;
+    }
+
+    regs->pc += offset;
+    log(LDEBUG "JR 0x%02x", offset);
+    return 0;
+}
+
+OPCODE(JR_NZ)
+{
+    uint8_t offset;
+
+#ifdef DEBUG
+    if (bus_read(&offset, regs->pc + 1))
+    {
+        return -1;
+    }
+
+    log(LDEBUG "JR NZ 0x%02x", offset);
+
+    if (regs->f.z)
+    {
+        return 0;
+    }
+#else
+    if (regs->f.z) // It's more efficient to check the condition first.
+    {
+        return 0;
+    }
+
+    if (bus_read(&offset, regs->pc + 1))
+    {
+        return -1;
+    }
+#endif
+
+    regs->pc += offset;
+    return 0;
+}
+
+OPCODE(JR_Z)
+{
+    uint8_t offset;
+
+#ifdef DEBUG
+    if (bus_read(&offset, regs->pc + 1))
+    {
+        return -1;
+    }
+
+    log(LDEBUG "JR Z 0x%02x", offset);
+
+    if (!regs->f.z)
+    {
+        return 0;
+    }
+#else
+    if (!regs->f.z) // It's more efficient to check the condition first.
+    {
+        return 0;
+    }
+
+    if (bus_read(&offset, regs->pc + 1))
+    {
+        return -1;
+    }
+#endif
+
+    regs->pc += offset;
+    return 0;
+}
+
+OPCODE(JR_NC)
+{
+    uint8_t offset;
+
+#ifdef DEBUG
+    if (bus_read(&offset, regs->pc + 1))
+    {
+        return -1;
+    }
+
+    log(LDEBUG "JR NC 0x%02x", offset);
+
+    if (regs->f.c)
+    {
+        return 0;
+    }
+#else
+    if (regs->f.c) // It's more efficient to check the condition first.
+    {
+        return 0;
+    }
+
+    if (bus_read(&offset, regs->pc + 1))
+    {
+        return -1;
+    }
+#endif
+
+    regs->pc += offset;
+    return 0;
+}
+
+OPCODE(JR_C)
+{
+    uint8_t offset;
+
+#ifdef DEBUG
+    if (bus_read(&offset, regs->pc + 1))
+    {
+        return -1;
+    }
+
+    log(LDEBUG "JR C 0x%02x", offset);
+
+    if (!regs->f.c)
+    {
+        return 0;
+    }
+#else
+    if (!regs->f.c) // It's more efficient to check the condition first.
+    {
+        return 0;
+    }
+
+    if (bus_read(&offset, regs->pc + 1))
+    {
+        return -1;
+    }
+#endif
+
+    regs->pc += offset;
+    return 0;
+}
+
 void register_opcodes()
 {
     /* ----------- Misc. ----------- */
@@ -3575,4 +3876,22 @@ void register_opcodes()
     ADD_OPCODE(0x13, 1, 8, DEC_DE);
     ADD_OPCODE(0x23, 1, 8, DEC_HL_2);
     ADD_OPCODE(0x33, 1, 8, DEC_SP);
+
+    /* ------------- Jumps ---------- */
+
+    ADD_OPCODE(0xC3, 3, 12, JP);
+
+    ADD_OPCODE(0xC2, 3, 12, JP_NZ);
+    ADD_OPCODE(0xCA, 3, 12, JP_Z);
+    ADD_OPCODE(0xD2, 3, 12, JP_NC);
+    ADD_OPCODE(0xDA, 3, 12, JP_C);
+
+    ADD_OPCODE(0xE9, 1, 4, JP_HL);
+
+    ADD_OPCODE(0x18, 2, 8, JR);
+
+    ADD_OPCODE(0x20, 2, 8, JR_NZ);
+    ADD_OPCODE(0x28, 2, 8, JR_Z);
+    ADD_OPCODE(0x30, 2, 8, JR_NC);
+    ADD_OPCODE(0x38, 2, 8, JR_C);
 }
