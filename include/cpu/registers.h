@@ -4,7 +4,7 @@
 #include <inttypes.h>
 
 #define __REG(n1, n2) \
-    union { struct { uint8_t n2 : 8; uint8_t n1 : 8; }; uint16_t n1 ## n2; };
+    union { struct { uint8_t n2; uint8_t n1; }; uint16_t n1 ## n2; };
 
 struct flag_reg {
 	uint8_t nu : 4; // Not used

@@ -42,6 +42,138 @@ static uint8_t swap(uint8_t to_swap, struct registers *regs)
     return result;
 }
 
+static void rlc(uint8_t *to_rot, struct registers *regs)
+{
+    regs->f.n = 0;
+    regs->f.h = 0;
+    regs->f.c = *to_rot >> 7;
+
+    *to_rot = (*to_rot << 1) | (*to_rot >> 7);
+
+    regs->f.z = *to_rot == 0 ? 1 : 0;
+}
+
+static void rl(uint8_t *to_rot, struct registers *regs)
+{
+    uint8_t new_c = *to_rot >> 7;
+
+    regs->f.n = 0;
+    regs->f.h = 0;
+    *to_rot = (*to_rot << 1) | regs->f.c;
+    regs->c = new_c & 1;
+
+    regs->f.z = *to_rot == 0 ? 1 : 0;
+}
+
+static void rrc(uint8_t *to_rot, struct registers *regs)
+{
+    regs->f.n = 0;
+    regs->f.h = 0;
+    regs->f.c = *to_rot & 1;
+
+    *to_rot = (*to_rot >> 1) | (*to_rot << 7);
+
+    regs->f.z = *to_rot == 0 ? 1 : 0;
+}
+
+static void rr(uint8_t *to_rot, struct registers *regs)
+{
+    uint8_t new_c = *to_rot & 1;
+
+    regs->f.n = 0;
+    regs->f.h = 0;
+    *to_rot = (*to_rot >> 1) | (regs->f.c << 7);
+    regs->c = new_c & 1;
+
+    regs->f.z = *to_rot == 0 ? 1 : 0;
+}
+
+static uint8_t shift_left(uint8_t to_shift, struct registers *regs)
+{
+    regs->f.n = 0;
+    regs->f.h = 0;
+    regs->f.c = to_shift >> 7;
+    regs->f.z = ((to_shift << 1) & 0xFF) == 0 ? 1 : 0;
+    return (to_shift << 1) & 0xFF;
+}
+
+static uint8_t shift_right(uint8_t to_shift, struct registers *regs)
+{
+    regs->f.n = 0;
+    regs->f.h = 0;
+    regs->f.c = to_shift & 1;
+    regs->f.z = (to_shift >> 1) == 0 ? 1 : 0;
+    return to_shift >> 1;
+}
+
+static int test_bit(struct registers *regs, uint8_t to_test)
+{
+    uint8_t n;
+
+    // Read n
+    regs->pc++;
+    if (bus_read(&n, regs->pc + 1))
+    {
+        return -1;
+    }
+
+    if (n > 7)
+    {
+        log(LERR "Invalid 'n' argument to BIT operation.");
+        return -1;
+    }
+
+    // Test bit
+    regs->f.z = (to_test >> n) & 1;
+    regs->f.n = 0;
+    regs->f.h = 1;
+    return n;
+}
+
+static int set_bit(struct registers *regs, uint8_t *to_set)
+{
+    uint8_t n;
+
+    // Read n
+    regs->pc++;
+    if (bus_read(&n, regs->pc + 1))
+    {
+        return -1;
+    }
+
+    if (n > 7)
+    {
+        log(LERR "Invalid 'n' argument to SET operation.");
+        return -1;
+    }
+
+    // Set bit
+    *to_set = *to_set | (1 << n);
+    return n;
+}
+
+static int reset_bit(struct registers *regs, uint8_t *to_set)
+{
+    uint8_t n;
+
+    // Read n
+    regs->pc++;
+    if (bus_read(&n, regs->pc + 1))
+    {
+        return -1;
+    }
+
+    if (n > 7)
+    {
+        log(LERR "Invalid 'n' argument to RES operation.");
+        return -1;
+    }
+
+    // Set bit
+    *to_set = *to_set ^ (1 << n);
+    return n;
+}
+
 /* ----------- Misc. ----------- */
 
 OPCODE(NOP)
@@ -52,7 +184,7 @@ OPCODE(NOP)
 
 OPCODE(CB)
 {
-    uint8_t type, value;
+    uint8_t type, value, ret;
 
     if (bus_read(&type, regs->pc + 1))
     {
@@ -61,6 +193,271 @@ OPCODE(CB)
 
     switch (type)
     {
+        case 0x07:
+            rlc(&regs->a, regs);
+            log(LDEBUG "RLC A");
+            break;
+        case 0x00:
+            rlc(&regs->b, regs);
+            log(LDEBUG "RLC B");
+            break;
+        case 0x01:
+            rlc(&regs->c, regs);
+            log(LDEBUG "RLC C");
+            break;
+        case 0x02:
+            rlc(&regs->d, regs);
+            log(LDEBUG "RLC D");
+            break;
+        case 0x03:
+            rlc(&regs->e, regs);
+            log(LDEBUG "RLC E");
+            break;
+        case 0x04:
+            rlc(&regs->h, regs);
+            log(LDEBUG "RLC H");
+            break;
+        case 0x05:
+            rlc(&regs->l, regs);
+            log(LDEBUG "RLC L");
+            break;
+        case 0x06:
+            if (bus_read(&value, regs->hl))
+            {
+                return -1;
+            }
+            rlc(&value, regs);
+            if (bus_write(value, regs->hl))
+            {
+                return -1;
+            }
+            log(LDEBUG "RLC (HL)");
+            break;
+        case 0x17:
+            rl(&regs->a, regs);
+            log(LDEBUG "RL A");
+            break;
+        case 0x10:
+            rl(&regs->b, regs);
+            log(LDEBUG "RL B");
+            break;
+        case 0x11:
+            rl(&regs->c, regs);
+            log(LDEBUG "RL C");
+            break;
+        case 0x12:
+            rl(&regs->d, regs);
+            log(LDEBUG "RL D");
+            break;
+        case 0x13:
+            rl(&regs->e, regs);
+            log(LDEBUG "RL E");
+            break;
+        case 0x14:
+            rl(&regs->h, regs);
+            log(LDEBUG "RL H");
+            break;
+        case 0x15:
+            rl(&regs->l, regs);
+            log(LDEBUG "RL L");
+            break;
+        case 0x16:
+            if (bus_read(&value, regs->hl))
+            {
+                return -1;
+            }
+            rl(&value, regs);
+            if (bus_write(value, regs->hl))
+            {
+                return -1;
+            }
+            log(LDEBUG "RL (HL)");
+            break;
+        case 0x0F:
+            rrc(&regs->a, regs);
+            log(LDEBUG "RRC A");
+            break;
+        case 0x08:
+            rrc(&regs->b, regs);
+            log(LDEBUG "RRC B");
+            break;
+        case 0x09:
+            rrc(&regs->c, regs);
+            log(LDEBUG "RRC C");
+            break;
+        case 0x0A:
+            rrc(&regs->d, regs);
+            log(LDEBUG "RRC D");
+            break;
+        case 0x0B:
+            rrc(&regs->e, regs);
+            log(LDEBUG "RRC E");
+            break;
+        case 0x0C:
+            rrc(&regs->h, regs);
+            log(LDEBUG "RRC H");
+            break;
+        case 0x0D:
+            rrc(&regs->l, regs);
+            log(LDEBUG "RRC L");
+            break;
+        case 0x0E:
+            if (bus_read(&value, regs->hl))
+            {
+                return -1;
+            }
+            rrc(&value, regs);
+            if (bus_write(value, regs->hl))
+            {
+                return -1;
+            }
+            log(LDEBUG "RRC (HL)");
+            break;
+        case 0x1F:
+            rr(&regs->a, regs);
+            log(LDEBUG "RR A");
+            break;
+        case 0x18:
+            rr(&regs->b, regs);
+            log(LDEBUG "RR B");
+            break;
+        case 0x19:
+            rr(&regs->c, regs);
+            log(LDEBUG "RR C");
+            break;
+        case 0x1A:
+            rr(&regs->d, regs);
+            log(LDEBUG "RR D");
+            break;
+        case 0x1B:
+            rr(&regs->e, regs);
+            log(LDEBUG "RR E");
+            break;
+        case 0x1C:
+            rr(&regs->h, regs);
+            log(LDEBUG "RR H");
+            break;
+        case 0x1D:
+            rr(&regs->l, regs);
+            log(LDEBUG "RR L");
+            break;
+        case 0x1E:
+            if (bus_read(&value, regs->hl))
+            {
+                return -1;
+            }
+            rr(&value, regs);
+            if (bus_write(value, regs->hl))
+            {
+                return -1;
+            }
+            log(LDEBUG "RR (HL)");
+            break;
+        case 0x27:
+            regs->a = shift_left(regs->a, regs);
+            log(LDEBUG "SLA A");
+            break;
+        case 0x20:
+            regs->b = shift_left(regs->b, regs);
+            log(LDEBUG "SLA B");
+            break;
+        case 0x21:
+            regs->c = shift_left(regs->c, regs);
+            log(LDEBUG "SLA C");
+            break;
+        case 0x22:
+            regs->d = shift_left(regs->d, regs);
+            log(LDEBUG "SLA D");
+            break;
+        case 0x23:
+            regs->e = shift_left(regs->e, regs);
+            log(LDEBUG "SLA E");
+            break;
+        case 0x24:
+            regs->h = shift_left(regs->h, regs);
+            log(LDEBUG "SLA H");
+            break;
+        case 0x25:
+            regs->l = shift_left(regs->l, regs);
+            log(LDEBUG "SLA L");
+            break;
+        case 0x26:
+            if (bus_read(&value, regs->hl) || bus_write(shift_left(value, regs), regs->hl))
+            {
+                return -1;
+            }
+            log(LDEBUG "SLA (HL)");
+            break;
+        case 0x2F:
+            regs->a = shift_right(regs->a, regs) | (regs->a & 0x80);
+            log(LDEBUG "SRA A");
+            break;
+        case 0x28:
+            regs->b = shift_right(regs->b, regs) | (regs->b & 0x80);
+            log(LDEBUG "SRA B");
+            break;
+        case 0x29:
+            regs->c = shift_right(regs->c, regs) | (regs->c & 0x80);
+            log(LDEBUG "SRA C");
+            break;
+        case 0x2A:
+            regs->d = shift_right(regs->d, regs) | (regs->d & 0x80);
+            log(LDEBUG "SRA D");
+            break;
+        case 0x2B:
+            regs->e = shift_right(regs->e, regs) | (regs->e & 0x80);
+            log(LDEBUG "SRA E");
+            break;
+        case 0x2C:
+            regs->h = shift_right(regs->h, regs) | (regs->h & 0x80);
+            log(LDEBUG "SRA H");
+            break;
+        case 0x2D:
+            regs->l = shift_right(regs->l, regs) | (regs->l & 0x80);
+            log(LDEBUG "SRA L");
+            break;
+        case 0x2E:
+            if (bus_read(&value, regs->hl) || bus_write(shift_right(value, regs) | (value & 0x80), regs->hl))
+            {
+                return -1;
+            }
+            log(LDEBUG "SRA (HL)");
+            break;
+        case 0x3F:
+            regs->a = shift_right(regs->a, regs);
+            log(LDEBUG "SRL A");
+            break;
+        case 0x38:
+            regs->b = shift_right(regs->b, regs);
+            log(LDEBUG "SRL B");
+            break;
+        case 0x39:
+            regs->c = shift_right(regs->c, regs);
+            log(LDEBUG "SRL C");
+            break;
+        case 0x3A:
+            regs->d = shift_right(regs->d, regs);
+            log(LDEBUG "SRL D");
+            break;
+        case 0x3B:
+            regs->e = shift_right(regs->e, regs);
+            log(LDEBUG "SRL E");
+            break;
+        case 0x3C:
+            regs->h = shift_right(regs->h, regs);
+            log(LDEBUG "SRL H");
+            break;
+        case 0x3D:
+            regs->l = shift_right(regs->l, regs);
+            log(LDEBUG "SRL L");
+            break;
+        case 0x3E:
+            if (bus_read(&value, regs->hl) || bus_write(shift_right(value, regs), regs->hl))
+            {
+                return -1;
+            }
+            log(LDEBUG "SRL (HL)");
+            break;
         case 0x37:
             regs->a = swap(regs->a, regs);
             log(LDEBUG "SWAP A");
@@ -90,11 +487,223 @@ OPCODE(CB)
             log(LDEBUG "SWAP L");
             break;
         case 0x36:
-            if (bus_read(&value, regs->hl) | bus_write(swap(value, regs), regs->hl))
+            if (bus_read(&value, regs->hl) || bus_write(swap(value, regs), regs->hl))
             {
                 return -1;
             }
             log(LDEBUG "SWAP (HL)");
+            break;
+        case 0x47:
+            value = test_bit(regs, regs->a);
+            if (value < 0)
+            {
+                return -1;
+            }
+            log(LDEBUG "BIT %d, A", value);
+            break;
+        case 0x40:
+            value = test_bit(regs, regs->b);
+            if (value < 0)
+            {
+                return -1;
+            }
+            log(LDEBUG "BIT %d, B", value);
+            break;
+        case 0x41:
+            value = test_bit(regs, regs->c);
+            if (value < 0)
+            {
+                return -1;
+            }
+            log(LDEBUG "BIT %d, C", value);
+            break;
+        case 0x42:
+            value = test_bit(regs, regs->d);
+            if (value < 0)
+            {
+                return -1;
+            }
+            log(LDEBUG "BIT %d, D", value);
+            break;
+        case 0x43:
+            value = test_bit(regs, regs->e);
+            if (value < 0)
+            {
+                return -1;
+            }
+            log(LDEBUG "BIT %d, E", value);
+            break;
+        case 0x44:
+            value = test_bit(regs, regs->h);
+            if (value < 0)
+            {
+                return -1;
+            }
+            log(LDEBUG "BIT %d, H", value);
+            break;
+        case 0x45:
+            value = test_bit(regs, regs->l);
+            if (value < 0)
+            {
+                return -1;
+            }
+            log(LDEBUG "BIT %d, L", value);
+            break;
+        case 0x46:
+            if (bus_read(&value, regs->hl))
+            {
+                return -1;
+            }
+            value = test_bit(regs, value);
+            if (value < 0)
+            {
+                return -1;
+            }
+            log(LDEBUG "BIT %d, (HL)", value);
+            break;
+        case 0xC7:
+            value = set_bit(regs, &regs->a);
+            if (value < 0)
+            {
+                return -1;
+            }
+            log(LDEBUG "SET %d, A", value);
+            break;
+        case 0xC0:
+            value = set_bit(regs, &regs->b);
+            if (value < 0)
+            {
+                return -1;
+            }
+            log(LDEBUG "SET %d, B", value);
+            break;
+        case 0xC1:
+            value = set_bit(regs, &regs->c);
+            if (value < 0)
+            {
+                return -1;
+            }
+            log(LDEBUG "SET %d, C", value);
+            break;
+        case 0xC2:
+            value = set_bit(regs, &regs->d);
+            if (value < 0)
+            {
+                return -1;
+            }
+            log(LDEBUG "SET %d, D", value);
+            break;
+        case 0xC3:
+            value = set_bit(regs, &regs->e);
+            if (value < 0)
+            {
+                return -1;
+            }
+            log(LDEBUG "SET %d, E", value);
+            break;
+        case 0xC4:
+            value = set_bit(regs, &regs->h);
+            if (value < 0)
+            {
+                return -1;
+            }
+            log(LDEBUG "SET %d, H", value);
+            break;
+        case 0xC5:
+            value = set_bit(regs, &regs->l);
+            if (value < 0)
+            {
+                return -1;
+            }
+            log(LDEBUG "SET %d, L", value);
+            break;
+        case 0xC6:
+            if (bus_read(&value, regs->hl))
+            {
+                return -1;
+            }
+            ret = set_bit(regs, &value);
+            if (ret < 0)
+            {
+                return -1;
+            }
+            if (bus_write(value, regs->hl))
+            {
+                return -1;
+            }
+            log(LDEBUG "SET %d, (HL)", ret);
+            break;
+        case 0x87:
+            value = reset_bit(regs, &regs->a);
+            if (value < 0)
+            {
+                return -1;
+            }
+            log(LDEBUG "RES %d, A", value);
+            break;
+        case 0x80:
+            value = reset_bit(regs, &regs->b);
+            if (value < 0)
+            {
+                return -1;
+            }
+            log(LDEBUG "RES %d, B", value);
+            break;
+        case 0x81:
+            value = reset_bit(regs, &regs->c);
+            if (value < 0)
+            {
+                return -1;
+            }
+            log(LDEBUG "RES %d, C", value);
+            break;
+        case 0x82:
+            value = reset_bit(regs, &regs->d);
+            if (value < 0)
+            {
+                return -1;
+            }
+            log(LDEBUG "RES %d, D", value);
+            break;
+        case 0x83:
+            value = reset_bit(regs, &regs->e);
+            if (value < 0)
+            {
+                return -1;
+            }
+            log(LDEBUG "RES %d, E", value);
+            break;
+        case 0x84:
+            value = reset_bit(regs, &regs->h);
+            if (value < 0)
+            {
+                return -1;
+            }
+            log(LDEBUG "RES %d, H", value);
+            break;
+        case 0x85:
+            value = reset_bit(regs, &regs->l);
+            if (value < 0)
+            {
+                return -1;
+            }
+            log(LDEBUG "RES %d, L", value);
+            break;
+        case 0x86:
+            if (bus_read(&value, regs->hl))
+            {
+                return -1;
+            }
+            ret = reset_bit(regs, &value);
+            if (ret < 0)
+            {
+                return -1;
+            }
+            if (bus_write(value, regs->hl))
+            {
+                return -1;
+            }
+            log(LDEBUG "RES %d, (HL)", ret);
             break;
     }
 
@@ -181,58 +790,28 @@ OPCODE(EI)
 
 OPCODE(RLCA)
 {
-    regs->f.n = 0;
-    regs->f.h = 0;
-    regs->f.c = regs->a >> 7;
-
-    regs->a = (regs->a << 1) | (regs->a >> 7);
-
-    regs->f.z = regs->a == 0 ? 1 : 0;
-
+    rlc(&regs->a, regs);
     log(LDEBUG "RLCA");
     return 0; 
 }
 
 OPCODE(RLA)
 {
-    uint8_t new_c = regs->a >> 7;
-
-    regs->f.n = 0;
-    regs->f.h = 0;
-    regs->a = (regs->a << 1) | regs->f.c;
-    regs->c = new_c & 1;
-
-    regs->f.z = regs->a == 0 ? 1 : 0;
-
+    rl(&regs->a, regs);
     log(LDEBUG "RLA");
     return 0; 
 }
 
 OPCODE(RRCA)
 {
-    regs->f.n = 0;
-    regs->f.h = 0;
-    regs->f.c = regs->a & 1;
-
-    regs->a = (regs->a >> 1) | (regs->a << 7);
-
-    regs->f.z = regs->a == 0 ? 1 : 0;
-
+    rrc(&regs->a, regs);
     log(LDEBUG "RRCA");
     return 0; 
 }
 
 OPCODE(RRA)
 {
-    uint8_t new_c = regs->a & 1;
-
-    regs->f.n = 0;
-    regs->f.h = 0;
-    regs->a = (regs->a >> 1) | (regs->f.c << 7);
-    regs->c = new_c & 1;
-
-    regs->f.z = regs->a == 0 ? 1 : 0;
-
+    rr(&regs->a, regs);
     log(LDEBUG "RRA");
     return 0; 
 }
