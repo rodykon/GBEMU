@@ -20,8 +20,13 @@ static inline int cpu_init()
     init_registers(&cpu.regs);
     if (irq_init())
         return -1;
+    if (timer_init(&cpu.timer_regs))
+    {
+        irq_end();
+        return -1;
+    }
     register_opcodes();
-    timer_init(&cpu.timer_regs);
+    return 0;
 }
 
 void cpu_loop()
@@ -29,7 +34,7 @@ void cpu_loop()
     struct opcode *opcode;
     uint8_t current_opcode, cycles = 0, disable_irq = 0, enable_irq = 0;
     
-    cpu_init();
+    if (cpu_init()) return;
 
     while(1)
     {
