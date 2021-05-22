@@ -4,6 +4,7 @@
 #include "bus.h"
 #include "log.h"
 #include "cpu/interrupts.h"
+#include "cpu/timer.h"
 
 
 struct cpu_struct cpu;
@@ -20,6 +21,7 @@ static inline int cpu_init()
     if (irq_init())
         return -1;
     register_opcodes();
+    timer_init(&cpu.timer_regs);
 }
 
 void cpu_loop()
@@ -63,6 +65,7 @@ void cpu_loop()
             }
         }
 
+        timer_update();
         cycles--;
     }
 

@@ -2,6 +2,7 @@
 #define CPU__
 
 #include "cpu/interrupts.h"
+#include "cpu/timer.h"
 
 enum cpu_state
 {
@@ -18,6 +19,7 @@ struct cpu_struct
     uint8_t ime; // Interrupt Master Enable flag
     struct irq_register if_flags; // Interrupt Flags
     struct irq_register ie_flags; // Interrupt Enable
+    struct timer_regs timer_regs;
 };
 
 // Global CPU.
@@ -26,4 +28,3 @@ extern struct cpu_struct cpu;
 void cpu_loop();
 
 #endif
-
