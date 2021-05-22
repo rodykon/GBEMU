@@ -71,5 +71,6 @@ void cpu_loop()
 
 end:
     irq_end();
+    timer_end();
 }
 

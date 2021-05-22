@@ -63,6 +63,11 @@ int timer_init(struct timer_regs *timer_regs)
     return add_bus_connection(DIV_ADDR, 4, timer_read, timer_write);
 }
 
+int timer_end()
+{
+    return remove_bus_connection(DIV_ADDR);
+}
+
 // Maps value of TAC.freq to bit of DIV that needs to overflow for timer increment.
 static uint8_t freq_to_div_bit[4] = {9, 3, 5, 7};
 

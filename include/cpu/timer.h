@@ -26,6 +26,8 @@ int timer_write(uint8_t val, uint16_t addr);
 
 int timer_init(struct timer_regs *timer_regs);
 
+int timer_end();
+
 void timer_update();
 
 #endif
